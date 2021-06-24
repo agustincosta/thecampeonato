@@ -3,6 +3,8 @@ import numpy as np
 import sys
 from PIL import Image
 from enum import Enum
+import pytesseract
+from difflib import SequenceMatcher
 
 class locales(Enum):
     TiendaInglesa = 1
@@ -51,6 +53,11 @@ class preprocessing:
     CFBoxHeightTolerance = 0.15
     erodeKernelSize = 45
     extentLimit = 0.75
+    CFText = "CONSUMO FINAL"
+    CFBoxFound = False
+    productRegion = 0
+    priceRegion = 0
+    priceAreaDivisionLim = 0.62
 
 
     def __init__(self, imgPath, supermarket):
@@ -205,6 +212,7 @@ class preprocessing:
         self.consumoFinalBoxHeightPx = altoBoxmm*self.consumoFinalBoxWidthPx/anchoBoxmm  
 
     def detectCFBox(self):
+        boxFound = False
         contours, hierarchy = cv.findContours(self.cropped, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         recCenter = 0
         recWidth = 0
@@ -231,14 +239,32 @@ class preprocessing:
             widthOK2 = (recWidth < heightHighLimit) and (recWidth > heightLowLimit)
             heightOK2 = (recHeight < widthHighLimit) and (recHeight > widthLowLimit)
 
-            print("W="+str(recWidth)+" H="+str(recHeight))
+            #print("W="+str(recWidth)+" H="+str(recHeight))
 
             if ((heightOK1 and widthOK1) or (heightOK2 and widthOK2)) and (recCenter[1] < self.croppedImgHeightPx/2):
-                #CFBox = boundingRect
-                break
+                text = self.readRegionText(np.int0(cv.boxPoints(CFBox)), self.cropped)
+                print(text)
+                similarity  = SequenceMatcher(None, text, self.CFText).ratio()
+                print(similarity)
+                cv.waitKey(0)
+                if similarity >= 0.7:
+                    print("Box found!")
+                    boxFound = True
+                    break
         
-        return CFBox
+        box = np.int0(cv.boxPoints(CFBox))
 
+        return box, boxFound
+
+    def readRegionText(self, region, image):
+        blank = np.zeros_like(image)
+        boxRegion = cv.fillConvexPoly(blank, region, 255)
+        boxRegionImage = cv.bitwise_and(image, boxRegion)
+        kernel = np.ones((3,3),np.uint8)
+        boxRegionImage = cv.dilate(boxRegionImage, kernel, None, iterations=1)
+        cv.imwrite('textRegion.jpg', boxRegionImage)
+        text = pytesseract.image_to_string(boxRegionImage, lang="spa")
+        return text
 
     def joinLetters(self):
         kernel = np.ones((3,3),np.uint8)
@@ -252,11 +278,26 @@ class preprocessing:
         region_of_interest_image= cv.bitwise_and(self.thresh, region_of_interest)
         return region_of_interest_image
 
+    def extractReadingAreas(self, image, boxFactura, boxCF):
+        prodAreaUpperLim = boxCF[0][1]
+        prodAreaLeftLim = boxFactura[1][0]
+        prodAreaLowerLim = boxFactura[0][1]
+        prodAreaRightLim = round(self.croppedImgWidthPx*self.priceAreaDivisionLim) + boxFactura[0][0]
+        priceAreaLeftLim = prodAreaRightLim
+        priceAreaUpperLim = prodAreaUpperLim
+        priceAreaLowerLim = prodAreaLowerLim
+        priceAreaRightLim = boxFactura[3][0]
+        productsBox = np.array([[prodAreaLeftLim, prodAreaLowerLim], [prodAreaLeftLim, prodAreaUpperLim], [prodAreaRightLim, prodAreaUpperLim], [prodAreaRightLim, prodAreaLowerLim]])
+        pricesBox = np.array([[priceAreaLeftLim, priceAreaLowerLim], [priceAreaLeftLim, priceAreaUpperLim], [priceAreaRightLim, priceAreaUpperLim], [priceAreaRightLim, priceAreaLowerLim]])
+        print(productsBox)
+        print(pricesBox)
+        return productsBox, pricesBox
+
 if __name__ == "__main__":
 
     cv.namedWindow("output", cv.WINDOW_NORMAL)
 
-    functions = preprocessing("tiendainglesa3.jpg", locales.TiendaInglesa)
+    functions = preprocessing("tiendainglesa4.jpg", locales.TiendaInglesa)
     """
     #functions.getImage()
     #print(functions.gray_img.type())
@@ -278,16 +319,33 @@ if __name__ == "__main__":
         sys.exit()
     cv.imwrite('cropped.jpg', functions.cropped)
     functions.calculateCFBoxDims()
-    CF = functions.detectCFBox()
+    CF, functions.CFBoxFound = functions.detectCFBox()
     
-    box = cv.boxPoints(CF)
-    box = np.int0(box)
     im3 = cv.cvtColor(functions.cropped, cv.COLOR_GRAY2BGR)
-    cv.drawContours(im3, [box], 0, (0,0,255), 8)
+    cv.drawContours(im3, [CF], 0, (0,0,255), 8)
     cv.imshow('output', im3)
     key = cv.waitKey(0)
     if key == ord('q'):
         sys.exit()
+
+    functions.productRegion, functions.priceRegion = functions.extractReadingAreas(functions.cropped, functions.region, CF)
+    cv.drawContours(im3, [functions.productRegion], 0, (0,0,255), 8)
+    cv.imshow('output', im3)
+    key = cv.waitKey(0)
+    cv.drawContours(im3, [functions.priceRegion], 0, (255,0,0), 8)
+    cv.imshow('output', im3)
+    key = cv.waitKey(0)
+    productsText = functions.readRegionText(functions.productRegion, functions.cropped)
+    priceText = functions.readRegionText(functions.priceRegion, functions.cropped)
+
+    with open('productsText.txt', 'w') as prodTxtFile:
+        prodTxtFile.write(productsText)
+    prodTxtFile.close()
+
+    with open('priceText.txt', 'w') as priceTxtFile:
+        priceTxtFile.write(priceText)
+    priceTxtFile.close()
+
     """
     functions.edgeDetection()
     cv.imshow('output', functions.edges)
