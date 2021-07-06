@@ -5,6 +5,7 @@ from PIL import Image
 from enum import Enum
 import pytesseract
 from difflib import SequenceMatcher
+import imutils
 
 class locales(Enum):
     TiendaInglesa = 1
@@ -49,8 +50,8 @@ class preprocessing:
     consumoFinalBoxHeightPx = 0
     croppedImgWidthPx = 0
     croppedImgHeightPx = 0
-    CFBoxWidthTolerance = 0.15
-    CFBoxHeightTolerance = 0.15
+    CFBoxWidthTolerance = 0.20
+    CFBoxHeightTolerance = 0.20
     erodeKernelSize = 45
     extentLimit = 0.75
     CFText = "CONSUMO FINAL"
@@ -94,7 +95,7 @@ class preprocessing:
         self.denoised = cv.fastNlMeansDenoising(self.thresh, None, 100, 21, 49)
 
     def cleanImage(self):
-        kernel = np.ones((3,3),np.uint8)
+        kernel = np.ones((5,5),np.uint8)
         dilatedImage = cv.dilate(self.thresh, kernel, None, iterations=1)
         self.cleaned = cv.erode(dilatedImage, kernel, None, iterations=1)
 
@@ -106,6 +107,10 @@ class preprocessing:
     def findPaperEdge(self):
         self.grayscaling()
         self.adaptiveThresholding()
+        self.cleanImage()
+        self.displayImage(self.cleaned)
+        self.joinLetters()
+        self.displayImage(self.joined)
         cv.imshow('output', self.img)
         cv.waitKey(0)
 
@@ -158,8 +163,12 @@ class preprocessing:
             sys.exit()
 
         rect = cv.minAreaRect(contours_poly)
-        self.croppedImgWidthPx = rect[1][0]
-        self.croppedImgHeightPx = rect[1][1]
+        if rect[1][0] < rect[1][1]:
+            self.croppedImgWidthPx = rect[1][0]
+            self.croppedImgHeightPx = rect[1][1]
+        else:
+            self.croppedImgWidthPx = rect[1][1]
+            self.croppedImgHeightPx = rect[1][0]
 
         area = cv.contourArea(contours[savedContour])
         extent = float(area)/(self.croppedImgHeightPx*self.croppedImgWidthPx)
@@ -209,11 +218,13 @@ class preprocessing:
             sys.exit()
 
         self.consumoFinalBoxWidthPx = self.croppedImgWidthPx*anchoBoxmm/self.ticketWidthmm
-        self.consumoFinalBoxHeightPx = altoBoxmm*self.consumoFinalBoxWidthPx/anchoBoxmm  
+        self.consumoFinalBoxHeightPx = altoBoxmm*self.consumoFinalBoxWidthPx/anchoBoxmm 
 
     def detectCFBox(self):
         boxFound = False
-        contours, hierarchy = cv.findContours(self.cropped, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        kernel = np.ones((7,7),np.uint8)
+        contourImg = cv.erode(self.cropped, kernel, None, iterations=1)
+        contours, hierarchy = cv.findContours(contourImg, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         recCenter = 0
         recWidth = 0
         recHeight = 0
@@ -226,6 +237,9 @@ class preprocessing:
         key = cv.waitKey(0)
         if key == ord('q'):
             sys.exit()
+
+        #self.displayImageContours(contourImg, contours, -1)
+        i = 0
 
         for c in contours:
             simplifiedContour = cv.approxPolyDP(c, 3, True)
@@ -240,6 +254,7 @@ class preprocessing:
             heightOK2 = (recHeight < widthHighLimit) and (recHeight > widthLowLimit)
 
             #print("W="+str(recWidth)+" H="+str(recHeight))
+            #self.displayImageContours(contourImg, contours, i)
 
             if ((heightOK1 and widthOK1) or (heightOK2 and widthOK2)) and (recCenter[1] < self.croppedImgHeightPx/2):
                 text = self.readRegionText(np.int0(cv.boxPoints(CFBox)), self.cropped)
@@ -251,7 +266,9 @@ class preprocessing:
                     print("Box found!")
                     boxFound = True
                     break
-        
+            
+            i = i + 1
+
         box = np.int0(cv.boxPoints(CFBox))
 
         return box, boxFound
@@ -267,7 +284,7 @@ class preprocessing:
         return text
 
     def joinLetters(self):
-        kernel = np.ones((3,3),np.uint8)
+        kernel = np.ones((5,5),np.uint8)
         erodedImage = cv.erode(self.cleaned, kernel, None, iterations=1)
         self.joined = cv.dilate(erodedImage, kernel, None, iterations=1)
 
@@ -279,19 +296,80 @@ class preprocessing:
         return region_of_interest_image
 
     def extractReadingAreas(self, image, boxFactura, boxCF):
-        prodAreaUpperLim = boxCF[0][1]
-        prodAreaLeftLim = boxFactura[1][0]
-        prodAreaLowerLim = boxFactura[0][1]
-        prodAreaRightLim = round(self.croppedImgWidthPx*self.priceAreaDivisionLim) + boxFactura[0][0]
+        _, prodAreaLowerLim, prodAreaLeftLim, priceAreaRightLim = self.boxLimits(boxFactura)
+        _, prodAreaUpperLim, cfBoxLeft, _ = self.boxLimits(boxCF)
+        prodAreaRightLim = round(self.croppedImgWidthPx*self.priceAreaDivisionLim) + prodAreaLeftLim
         priceAreaLeftLim = prodAreaRightLim
         priceAreaUpperLim = prodAreaUpperLim
         priceAreaLowerLim = prodAreaLowerLim
-        priceAreaRightLim = boxFactura[3][0]
         productsBox = np.array([[prodAreaLeftLim, prodAreaLowerLim], [prodAreaLeftLim, prodAreaUpperLim], [prodAreaRightLim, prodAreaUpperLim], [prodAreaRightLim, prodAreaLowerLim]])
         pricesBox = np.array([[priceAreaLeftLim, priceAreaLowerLim], [priceAreaLeftLim, priceAreaUpperLim], [priceAreaRightLim, priceAreaUpperLim], [priceAreaRightLim, priceAreaLowerLim]])
-        print(productsBox)
-        print(pricesBox)
+        
         return productsBox, pricesBox
+
+    def boxLimits(self, boxPoints):
+        lower = max(boxPoints[:,1])
+        upper = min(boxPoints[:,1])
+        left = min(boxPoints[:,0])
+        right = max(boxPoints[:,0])
+        return upper, lower, left, right
+    
+    def displayImage(self, img):
+        cv.imshow('output', img)
+        key = cv.waitKey(0)
+        if key == ord('q'):
+            sys.exit()
+
+    def displayImageBox(self, img, boxPoints):
+        im3 = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
+        cv.drawContours(im3, [boxPoints], 0, (0,0,255), 8)
+        cv.imshow('output', im3)
+        key = cv.waitKey(0)
+        if key == ord('q'):
+            sys.exit()
+
+    def displayImageContours(self, img, contour, idx):
+        im3 = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
+        cv.drawContours(im3, contour, idx, (0,0,255), 8)
+        cv.imshow('output', im3)
+        key = cv.waitKey(0)
+        if key == ord('q'):
+            sys.exit()
+
+    def matchTemplate(self, temp, img):
+        template = cv.imread(temp)
+        template = cv.cvtColor(template, cv.COLOR_BGR2GRAY)
+        template = cv.Canny(template, 50, 200)
+        (tH, tW) = template.shape[:2]
+        cv.imshow("Template", template)
+        found = None
+
+        for scale in np.linspace(0.2, 2.0, 40)[::-1]:
+            resized = imutils.resize(img, width=int(img.shape[1]*scale))
+            r = img.shape[1]/float(resized.shape[1])
+            if resized.shape[0] < tH or resized.shape[1] < tW:
+                break
+            edged = cv.Canny(resized, 50, 200)
+            result = cv.matchTemplate(edged, template, cv.TM_CCOEFF)
+            (_, maxVal, _, maxLoc) = cv.minMaxLoc(result)
+            clone = np.dstack([edged, edged, edged])
+            #cv.rectangle(clone, (maxLoc[0], maxLoc[1]),(maxLoc[0] + tW, maxLoc[1] + tH), (0, 0, 255), 2)
+            #cv.namedWindow("Visualize", cv.WINDOW_NORMAL)
+            #cv.imshow("Visualize", clone)
+            #cv.waitKey(0)
+
+            if found is None or maxVal > found[0]:
+                found = (maxVal, maxLoc, r)
+
+        (_, maxLoc, r) = found
+        (startX, startY) = (int(maxLoc[0] * r), int(maxLoc[1] * r))
+        (endX, endY) = (int((maxLoc[0] + tW) * r), int((maxLoc[1] + tH) * r))
+
+        img_color = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
+        cv.rectangle(img_color, (startX, startY), (endX, endY), (0, 0, 255), 2)
+        cv.imshow("Image", img_color)
+        cv.waitKey(0)
+        cv.imwrite('logo_found.jpg', img_color)
 
 if __name__ == "__main__":
 
@@ -318,9 +396,16 @@ if __name__ == "__main__":
     if key == ord('q'):
         sys.exit()
     cv.imwrite('cropped.jpg', functions.cropped)
+
+    functions.matchTemplate("tiendainglesa_template.jpg", functions.cropped)
+
     functions.calculateCFBoxDims()
     CF, functions.CFBoxFound = functions.detectCFBox()
     
+    if not functions.CFBoxFound:
+        print("-------------NO ENCONTRADO-------------")
+        sys.exit()
+
     im3 = cv.cvtColor(functions.cropped, cv.COLOR_GRAY2BGR)
     cv.drawContours(im3, [CF], 0, (0,0,255), 8)
     cv.imshow('output', im3)
