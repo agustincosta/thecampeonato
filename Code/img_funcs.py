@@ -3,9 +3,9 @@ import numpy as np
 import sys
 from PIL import Image
 from enum import Enum
-import pytesseract
 from difflib import SequenceMatcher
 import imutils
+from ocr_funcs import OCRFunctions
 
 class locales(Enum):
     TiendaInglesa = 1
@@ -17,10 +17,11 @@ class locales(Enum):
     Macro = 7
     Tata = 8
 
-
-class preprocessing:
+class imageFunctions:
 
     img = 0
+    adaptThresh = 0
+    binaryThresh = 0
     thresh = 0
     gray_img = 0
     deskewed = 0
@@ -33,6 +34,7 @@ class preprocessing:
     thresholdingConstant = 2
     cannyThresh1 = 100
     cannyThresh2 = 200
+    binaryLimit = 170
     edges = 0
     region = 0
     cropped = 0
@@ -59,135 +61,39 @@ class preprocessing:
     productRegion = 0
     priceRegion = 0
     priceAreaDivisionLim = 0.62
-
+    CFBox = 0
 
     def __init__(self, imgPath, supermarket):
         self.getImage(imgPath)
         self.local = supermarket
         self.height, self.width = self.img.shape[:2]
+        self.croppedImgHeightPx = self.height
+        self.croppedImgWidthPx = self.width
 
     def getImage(self, imgPath):
         self.img = cv.imread(imgPath)
         if self.img is None:
             sys.exit("Could not open the image")
 
-    def grayscaling(self):
-        self.gray_img = cv.cvtColor(self.img, cv.COLOR_BGR2GRAY)
+    def grayscaling(self, image):
+        gray_img = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+        return gray_img
 
-    def adaptiveThresholding(self):
-        self.grayscaling()
-        self.thresh = cv.adaptiveThreshold(self.gray_img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, self.thresholdingBlockSize, self.thresholdingConstant)
+    def adaptiveThresholding(self, image):
+        grayscale = self.grayscaling(image)
+        adaptThresh = cv.adaptiveThreshold(grayscale, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, self.thresholdingBlockSize, self.thresholdingConstant)
+        return adaptThresh
 
-    def deskew(self, image):
-        coords = np.column_stack(np.where(image > 0))
-        angle = cv.minAreaRect(coords)[-1]
-        if angle < -45:
-            angle = -(90 + angle)
-        else:
-            angle = -angle
-        (h, w) = image.shape[:2]
-        center = (w // 2, h // 2)
-        M = cv.getRotationMatrix2D(center, angle, 1.0)
-        rotated = cv.warpAffine(image, M, (w, h), flags=cv.INTER_CUBIC, borderMode=cv.BORDER_REPLICATE)
-        return rotated
+    def normalThresholding(self, image):
+        grayscale = self.grayscaling(image)
+        _, binaryThresh = cv.threshold(grayscale, self.binaryLimit, 255, cv.THRESH_BINARY)
+        return binaryThresh
 
-    def denoise(self):
-        self.denoised = cv.fastNlMeansDenoising(self.thresh, None, 100, 21, 49)
-
-    def cleanImage(self):
+    def cleanImage(self, image):
         kernel = np.ones((5,5),np.uint8)
-        dilatedImage = cv.dilate(self.thresh, kernel, None, iterations=1)
-        self.cleaned = cv.erode(dilatedImage, kernel, None, iterations=1)
-
-    def edgeDetection(self):
-        self.gray_img = cv.cvtColor(self.img, cv.COLOR_BGR2GRAY)
-        thresh = cv.threshold(self.gray_img, 180, 255, cv.THRESH_BINARY)[1]
-        self.edges = cv.Canny(thresh, self.cannyThresh1, self.cannyThresh2)
-
-    def findPaperEdge(self):
-        self.grayscaling()
-        self.adaptiveThresholding()
-        self.cleanImage()
-        self.displayImage(self.cleaned)
-        self.joinLetters()
-        self.displayImage(self.joined)
-        cv.imshow('output', self.img)
-        cv.waitKey(0)
-
-        kernel = np.ones((self.erodeKernelSize,self.erodeKernelSize),np.uint8)
-        eroded = cv.erode(self.thresh, kernel, None, iterations=1)
-        cv.imshow('output', eroded)
-        key = cv.waitKey(0)
-        if key == ord('q'):
-            sys.exit()
-
-        contours, hierarchy = cv.findContours(eroded, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-        im3 = cv.cvtColor(eroded, cv.COLOR_GRAY2BGR)
-
-        maxArea = 0
-        savedContour = 0
-        for i in range(0, len(contours)):
-            area = cv.contourArea(contours[i])
-            if area > maxArea:
-                maxArea = area
-                prevContour = savedContour
-                savedContour = i
-        result = cv.drawContours(im3, contours, savedContour, (0,255,0), 8, cv.FILLED)
-        cv.imshow('output', im3)
-        key = cv.waitKey(0)
-        if key == ord('q'):
-            sys.exit()
-        """
-        lines = cv.HoughLines(im3,1,np.pi/180,200)
-        for line in lines:
-            rho,theta = line[0]
-            a = np.cos(theta)
-            b = np.sin(theta)
-            x0 = a*rho
-            y0 = b*rho
-            x1 = int(x0 + 1000*(-b))
-            y1 = int(y0 + 1000*(a))
-            x2 = int(x0 - 1000*(-b))
-            y2 = int(y0 - 1000*(a))
-            cv.line(im3,(x1,y1),(x2,y2),(0,0,255),2)
-        cv.imshow('output', im3)
-        key = cv.waitKey(0)
-        if key == ord('q'):
-            sys.exit()
-        """
-        contours_poly = cv.approxPolyDP(contours[savedContour], 150, True)
-        result = cv.drawContours(im3, contours_poly, -1, (0,0,255), 18, cv.FILLED)
-        cv.imshow('output', im3)
-        key = cv.waitKey(0)
-        if key == ord('q'):
-            sys.exit()
-
-        rect = cv.minAreaRect(contours_poly)
-        if rect[1][0] < rect[1][1]:
-            self.croppedImgWidthPx = rect[1][0]
-            self.croppedImgHeightPx = rect[1][1]
-        else:
-            self.croppedImgWidthPx = rect[1][1]
-            self.croppedImgHeightPx = rect[1][0]
-
-        area = cv.contourArea(contours[savedContour])
-        extent = float(area)/(self.croppedImgHeightPx*self.croppedImgWidthPx)
-        print(extent)
-
-        if extent < self.extentLimit:
-            #find straight lines
-            print("Mal detectado")
-
-        box = cv.boxPoints(rect)
-        box = np.int0(box)
-
-        cv.drawContours(im3, [box], 0, (0,0,255), 8)
-        cv.imshow('output', im3)
-        key = cv.waitKey(0)
-        if key == ord('q'):
-            sys.exit()
-
-        return box
+        dilatedImage = cv.dilate(image, kernel, None, iterations=1)
+        cleaned = cv.erode(dilatedImage, kernel, None, iterations=1)
+        return cleaned
 
     def calculateCFBoxDims(self):
         anchoBoxmm = 0
@@ -217,13 +123,14 @@ class preprocessing:
         elif self.local == locales.Macro:
             sys.exit()
 
-        self.consumoFinalBoxWidthPx = self.croppedImgWidthPx*anchoBoxmm/self.ticketWidthmm
+        self.consumoFinalBoxWidthPx = self.width*anchoBoxmm/self.ticketWidthmm
         self.consumoFinalBoxHeightPx = altoBoxmm*self.consumoFinalBoxWidthPx/anchoBoxmm 
 
-    def detectCFBox(self):
+    def detectCFBox(self, image):
         boxFound = False
-        kernel = np.ones((7,7),np.uint8)
-        contourImg = cv.erode(self.cropped, kernel, None, iterations=1)
+        kernel = np.ones((15,15),np.uint8)
+        contourImg = cv.erode(image, kernel, None, iterations=1)
+        #self.displayImage(contourImg)
         contours, hierarchy = cv.findContours(contourImg, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         recCenter = 0
         recWidth = 0
@@ -256,12 +163,12 @@ class preprocessing:
             #print("W="+str(recWidth)+" H="+str(recHeight))
             #self.displayImageContours(contourImg, contours, i)
 
-            if ((heightOK1 and widthOK1) or (heightOK2 and widthOK2)) and (recCenter[1] < self.croppedImgHeightPx/2):
-                text = self.readRegionText(np.int0(cv.boxPoints(CFBox)), self.cropped)
-                print(text)
+            if ((heightOK1 and widthOK1) or (heightOK2 and widthOK2)) and (recCenter[1] < self.height/2):
+                text = OCRFunctions.readRegionText(OCRFunctions, np.int0(cv.boxPoints(CFBox)), image, "cfBox")
+                #print(text)
                 similarity  = SequenceMatcher(None, text, self.CFText).ratio()
-                print(similarity)
-                cv.waitKey(0)
+                #print(similarity)
+                #cv.waitKey(0)
                 if similarity >= 0.7:
                     print("Box found!")
                     boxFound = True
@@ -272,21 +179,12 @@ class preprocessing:
         box = np.int0(cv.boxPoints(CFBox))
 
         return box, boxFound
-
-    def readRegionText(self, region, image):
-        blank = np.zeros_like(image)
-        boxRegion = cv.fillConvexPoly(blank, region, 255)
-        boxRegionImage = cv.bitwise_and(image, boxRegion)
-        kernel = np.ones((3,3),np.uint8)
-        boxRegionImage = cv.dilate(boxRegionImage, kernel, None, iterations=1)
-        cv.imwrite('textRegion.jpg', boxRegionImage)
-        text = pytesseract.image_to_string(boxRegionImage, lang="spa", config='-psm 6 -c tessedit_char_whitelist=12345678ABCDEFGHIJKLMNOPQRSTUVWXYZ., load_system_dawg=false load_freq_dawg=false')
-        return text
-
+    
     def joinLetters(self):
         kernel = np.ones((5,5),np.uint8)
         erodedImage = cv.erode(self.cleaned, kernel, None, iterations=1)
         self.joined = cv.dilate(erodedImage, kernel, None, iterations=1)
+        return self.joined
 
     def ROI(self, box):
         #ROI= np.array([[(120,self.height),(120,220),(750,220),(750,self.height)]], dtype= np.int32)
@@ -315,6 +213,7 @@ class preprocessing:
         return upper, lower, left, right
     
     def displayImage(self, img):
+        cv.namedWindow("output", cv.WINDOW_NORMAL)
         cv.imshow('output', img)
         key = cv.waitKey(0)
         if key == ord('q'):
@@ -323,6 +222,7 @@ class preprocessing:
     def displayImageBox(self, img, boxPoints):
         im3 = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
         cv.drawContours(im3, [boxPoints], 0, (0,0,255), 8)
+        cv.namedWindow("output", cv.WINDOW_NORMAL)
         cv.imshow('output', im3)
         key = cv.waitKey(0)
         if key == ord('q'):
@@ -331,6 +231,7 @@ class preprocessing:
     def displayImageContours(self, img, contour, idx):
         im3 = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
         cv.drawContours(im3, contour, idx, (0,0,255), 8)
+        cv.namedWindow("output", cv.WINDOW_NORMAL)
         cv.imshow('output', im3)
         key = cv.waitKey(0)
         if key == ord('q'):
@@ -371,81 +272,22 @@ class preprocessing:
         cv.waitKey(0)
         cv.imwrite('logo_found.jpg', img_color)
 
-if __name__ == "__main__":
+    def imageConditioning(self):
+        #self.displayImage(self.img)
+        binaryThresh = self.normalThresholding(self.img)
+        #self.displayImage(binaryThresh)
+        self.cleaned = self.cleanImage(binaryThresh)
+        #self.displayImage(self.cleaned)
+        self.calculateCFBoxDims()
+        self.CFBox, CFBoxFound = self.detectCFBox(self.cleaned)
 
-    cv.namedWindow("output", cv.WINDOW_NORMAL)
+        if not CFBoxFound:
+            print("-------------NO ENCONTRADO-------------")
+            sys.exit()
 
-    functions = preprocessing("ti_imposible.jpg", locales.TiendaInglesa)
-    """
-    #functions.getImage()
-    #print(functions.gray_img.type())
-    functions.thresh = functions.adaptiveThresholding()
-    functions.deskewed = functions.deskew(functions.thresh)
-    functions.denoise()
-    functions.cleanImage()
-    functions.joinLetters()
-    cv.imshow('output', functions.thresh)
-    cv.waitKey(0)
-    cv.imwrite('thresholding.jpg', functions.thresh)
-    im2 = functions.thresh
-    """
-    functions.region = functions.findPaperEdge()
-    functions.cropped = functions.ROI(functions.region)
-    cv.imshow('output', functions.cropped)
-    key = cv.waitKey(0)
-    if key == ord('q'):
-        sys.exit()
-    cv.imwrite('cropped.jpg', functions.cropped)
+        return CFBoxFound, self.cleaned
 
-    functions.matchTemplate("tiendainglesa_template.jpg", functions.cropped)
-
-    functions.calculateCFBoxDims()
-    CF, functions.CFBoxFound = functions.detectCFBox()
-    
-    if not functions.CFBoxFound:
-        print("-------------NO ENCONTRADO-------------")
-        sys.exit()
-
-    im3 = cv.cvtColor(functions.cropped, cv.COLOR_GRAY2BGR)
-    cv.drawContours(im3, [CF], 0, (0,0,255), 8)
-    cv.imshow('output', im3)
-    key = cv.waitKey(0)
-    if key == ord('q'):
-        sys.exit()
-
-    functions.productRegion, functions.priceRegion = functions.extractReadingAreas(functions.cropped, functions.region, CF)
-    cv.drawContours(im3, [functions.productRegion], 0, (0,0,255), 8)
-    cv.imshow('output', im3)
-    key = cv.waitKey(0)
-    cv.drawContours(im3, [functions.priceRegion], 0, (255,0,0), 8)
-    cv.imshow('output', im3)
-    key = cv.waitKey(0)
-    productsText = functions.readRegionText(functions.productRegion, functions.cropped)
-    priceText = functions.readRegionText(functions.priceRegion, functions.cropped)
-
-    with open('productsText.txt', 'w') as prodTxtFile:
-        prodTxtFile.write(productsText)
-    prodTxtFile.close()
-
-    with open('priceText.txt', 'w') as priceTxtFile:
-        priceTxtFile.write(priceText)
-    priceTxtFile.close()
-
-    """
-    functions.edgeDetection()
-    cv.imshow('output', functions.edges)
-    cv.waitKey(0)
-    cv.imwrite('canny.jpg', functions.edges)
-
-    
-    cv.imshow('output', functions.cleaned)
-    cv.waitKey(0)
-    # ROI= np.array([[(120,functions.height),(120,220),(750,220),(750,functions.height)]], dtype= np.int32)
-    # draw = cv.polylines(functions.cleaned, ROI, True, (0,255,0), thickness=3)
-    # cv.imshow('output', draw)
-    # cv.waitKey(0)
-    cv.imwrite('cleaned.jpg', functions.cleaned)
-    cv.imshow('output', functions.joined)
-    cv.waitKey(0)
-    cv.imwrite('joined.jpg', functions.joined)
-    """
+    def textRegions(self, image):
+        self.region =np.array([[0, self.height], [0, 0], [self.width, 0], [self.width, self.height]])
+        self.productRegion, self.priceRegion = self.extractReadingAreas(image, self.region, self.CFBox)
+        return self.productRegion, self.priceRegion
