@@ -62,6 +62,7 @@ class imageFunctions:
     priceRegion = 0
     priceAreaDivisionLim = 0.62
     CFBox = 0
+    stopProcess = False
 
     def __init__(self, imgPath, supermarket):
         self.getImage(imgPath)
@@ -69,6 +70,7 @@ class imageFunctions:
         self.height, self.width = self.img.shape[:2]
         self.croppedImgHeightPx = self.height
         self.croppedImgWidthPx = self.width
+        self.stopProcess = False
 
     def getImage(self, imgPath):
         self.img = cv.imread(imgPath)
@@ -130,7 +132,7 @@ class imageFunctions:
         boxFound = False
         kernel = np.ones((15,15),np.uint8)
         contourImg = cv.erode(image, kernel, None, iterations=1)
-        #self.displayImage(contourImg)
+        self.displayImage(contourImg)
         contours, hierarchy = cv.findContours(contourImg, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         recCenter = 0
         recWidth = 0
@@ -164,7 +166,7 @@ class imageFunctions:
             #self.displayImageContours(contourImg, contours, i)
 
             if ((heightOK1 and widthOK1) or (heightOK2 and widthOK2)) and (recCenter[1] < self.height/2):
-                text = OCRFunctions.readRegionText(OCRFunctions, np.int0(cv.boxPoints(CFBox)), image, "cfBox")
+                text = OCRFunctions.readRegionText(OCRFunctions, np.int0(cv.boxPoints(CFBox)), image, "cfBox", True)
                 #print(text)
                 similarity  = SequenceMatcher(None, text, self.CFText).ratio()
                 #print(similarity)
@@ -274,7 +276,8 @@ class imageFunctions:
 
     def imageConditioning(self):
         #self.displayImage(self.img)
-        binaryThresh = self.normalThresholding(self.img)
+        #binaryThresh = self.normalThresholding(self.img)
+        binaryThresh = self.adaptiveThresholding(self.img)
         #self.displayImage(binaryThresh)
         self.cleaned = self.cleanImage(binaryThresh)
         #self.displayImage(self.cleaned)
@@ -282,8 +285,10 @@ class imageFunctions:
         self.CFBox, CFBoxFound = self.detectCFBox(self.cleaned)
 
         if not CFBoxFound:
-            print("-------------NO ENCONTRADO-------------")
-            sys.exit()
+            #print("-------------NO ENCONTRADO-------------")
+            #sys.exit()
+            self.stopProcess = True
+            raise RuntimeError("-------------NO ENCONTRADO-------------")
 
         return CFBoxFound, self.cleaned
 
