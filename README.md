@@ -2,4 +2,4 @@
 
 OCR de facturas y análisis de datos
 
-![https://github.com/agustincosta/thecampeonato/tree/main/tutorial/diagrama_funcional.png]()
+![Diagrama funcional](https://github.com/agustincosta/thecampeonato/blob/main/tutorial/diagrama_funcional.png)
