@@ -47,6 +47,8 @@ class imageFunctions:
     consumoFinalDevSBoxHeightmm = 9.5
     consumoFinalDevLBoxWidthmm = 59
     consumoFinalDevLBoxHeightmm = 15
+    consumoFinalMacroBoxHeightmm = 11
+    consumoFinalMacroBoxWidthmm = 31.5
     local = 0
     consumoFinalBoxWidthPx = 0
     consumoFinalBoxHeightPx = 0
@@ -123,7 +125,8 @@ class imageFunctions:
             anchoBoxmm = self.consumoFinalVarBoxWidthmm
             altoBoxmm = self.consumoFinalTIBoxHeightmm
         elif self.local == locales.Macro:
-            sys.exit()
+            anchoBoxmm = self.consumoFinalMacroBoxWidthmm
+            altoBoxmm = self.consumoFinalMacroBoxHeightmm
 
         self.consumoFinalBoxWidthPx = self.width*anchoBoxmm/self.ticketWidthmm
         self.consumoFinalBoxHeightPx = altoBoxmm*self.consumoFinalBoxWidthPx/anchoBoxmm 
@@ -132,7 +135,7 @@ class imageFunctions:
         boxFound = False
         kernel = np.ones((15,15),np.uint8)
         contourImg = cv.erode(image, kernel, None, iterations=1)
-        self.displayImage(contourImg)
+        #self.displayImage(contourImg)
         contours, hierarchy = cv.findContours(contourImg, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         recCenter = 0
         recWidth = 0
@@ -198,7 +201,10 @@ class imageFunctions:
     def extractReadingAreas(self, image, boxFactura, boxCF):
         _, prodAreaLowerLim, prodAreaLeftLim, priceAreaRightLim = self.boxLimits(boxFactura)
         _, prodAreaUpperLim, cfBoxLeft, _ = self.boxLimits(boxCF)
-        prodAreaRightLim = round(self.croppedImgWidthPx*self.priceAreaDivisionLim) + prodAreaLeftLim
+        if (self.local != locales.Macro):
+            prodAreaRightLim = round(self.croppedImgWidthPx*self.priceAreaDivisionLim) + prodAreaLeftLim
+        else:
+            prodAreaRightLim = round(self.width/2)
         priceAreaLeftLim = prodAreaRightLim
         priceAreaUpperLim = prodAreaUpperLim
         priceAreaLowerLim = prodAreaLowerLim
@@ -239,6 +245,9 @@ class imageFunctions:
         if key == ord('q'):
             sys.exit()
 
+    def saveImage(self, img, filename):
+        cv.imwrite(filename, img)
+
     def matchTemplate(self, temp, img):
         template = cv.imread(temp)
         template = cv.cvtColor(template, cv.COLOR_BGR2GRAY)
@@ -274,12 +283,13 @@ class imageFunctions:
         cv.waitKey(0)
         cv.imwrite('logo_found.jpg', img_color)
 
-    def imageConditioning(self):
+    def imageConditioning(self, dir, filename):
         #self.displayImage(self.img)
-        #binaryThresh = self.normalThresholding(self.img)
-        binaryThresh = self.adaptiveThresholding(self.img)
+        self.binaryThresh = self.normalThresholding(self.img)
+        #self.binaryThresh = self.adaptiveThresholding(self.img)
         #self.displayImage(binaryThresh)
-        self.cleaned = self.cleanImage(binaryThresh)
+        self.saveImage(self.binaryThresh, dir+"/binarized_"+filename)
+        self.cleaned = self.cleanImage(self.binaryThresh)
         #self.displayImage(self.cleaned)
         self.calculateCFBoxDims()
         self.CFBox, CFBoxFound = self.detectCFBox(self.cleaned)

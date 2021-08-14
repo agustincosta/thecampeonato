@@ -5,7 +5,7 @@ import os
 
 localesDictionary = {"DEVOTO" : img_funcs.locales.Devoto,
                      "DEVOTO_FM" : img_funcs.locales.Devoto,
-                     "DISCO" : img_funcs.locales.Disco,
+                     "DISCO_FM" : img_funcs.locales.Disco,
                      "FROG" : img_funcs.locales.Frog,
                      "GEANT" : img_funcs.locales.Geant,
                      "KINKO" : img_funcs.locales.Kinko,
@@ -17,13 +17,15 @@ localesDictionary = {"DEVOTO" : img_funcs.locales.Devoto,
 imagesDir = "../Images"
 for dirname in os.listdir(imagesDir):
     imageFolder = dirname
-    #imageFolder = "DISCO_FM"
-    #imageNumber = 1
+    
+    if dirname == "Templates":
+        continue
+
     for filename in os.listdir("../Images/"+imageFolder):
         try:
             print(imageFolder, localesDictionary[imageFolder], filename)
             preprocessing = img_funcs.imageFunctions("../Images/"+imageFolder+"/"+filename, localesDictionary[imageFolder])
-            CFBoxFound, cleanedImg = preprocessing.imageConditioning()
+            CFBoxFound, cleanedImg = preprocessing.imageConditioning("../Results/"+imageFolder, filename)
             productRegion, priceRegion = preprocessing.textRegions(cleanedImg)
 
             productsText = ocr_funcs.OCRFunctions.readRegionText(ocr_funcs, productRegion, cleanedImg, 'Prod', True)
