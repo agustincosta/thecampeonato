@@ -133,7 +133,7 @@ class imageFunctions:
 
     def detectCFBox(self, image):
         boxFound = False
-        kernel = np.ones((15,15),np.uint8)
+        kernel = np.ones((15,30),np.uint8)
         contourImg = cv.erode(image, kernel, None, iterations=1)
         #self.displayImage(contourImg)
         contours, hierarchy = cv.findContours(contourImg, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
