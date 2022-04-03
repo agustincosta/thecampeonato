@@ -6,6 +6,9 @@ from enum import Enum
 from difflib import SequenceMatcher
 import imutils
 from ocr_funcs import OCRFunctions
+import matplotlib.pyplot as plt
+import pytesseract
+from pytesseract import Output
 
 class locales(Enum):
     TiendaInglesa = 1
@@ -23,6 +26,7 @@ class imageFunctions:
     adaptThresh = 0
     binaryThresh = 0
     thresh = 0
+    otsuThresh = 0
     gray_img = 0
     deskewed = 0
     denoised = 0
@@ -30,8 +34,8 @@ class imageFunctions:
     joined = 0
     height = 0
     width = 0
-    thresholdingBlockSize = 3009
-    thresholdingConstant = 2
+    thresholdingBlockSize = 3309
+    thresholdingConstant = 20
     cannyThresh1 = 100
     cannyThresh2 = 200
     binaryLimit = 170
@@ -79,13 +83,24 @@ class imageFunctions:
         if self.img is None:
             sys.exit("Could not open the image")
 
+    def scaling(self, image, scale=2):
+        self.height = self.height*scale
+        self.width = self.width*scale
+        return cv.resize(image, None, fx=scale, fy=scale, interpolation=cv.INTER_CUBIC)
+
     def grayscaling(self, image):
         gray_img = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
         return gray_img
 
+    def gaussianBlur(self, image):
+        return cv.GaussianBlur(image, (7, 7), 0)
+
+    def filtering(self, image):
+        bilateral = cv.bilateralFilter(image, 19, 100, 100)
+        return bilateral
+
     def adaptiveThresholding(self, image):
-        grayscale = self.grayscaling(image)
-        adaptThresh = cv.adaptiveThreshold(grayscale, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, self.thresholdingBlockSize, self.thresholdingConstant)
+        adaptThresh = cv.adaptiveThreshold(image, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, self.thresholdingBlockSize, self.thresholdingConstant)
         return adaptThresh
 
     def normalThresholding(self, image):
@@ -93,11 +108,54 @@ class imageFunctions:
         _, binaryThresh = cv.threshold(grayscale, self.binaryLimit, 255, cv.THRESH_BINARY)
         return binaryThresh
 
+    def OtsuThresholding(self, image):
+        #grayscale = self.grayscaling(image)
+        #blurred = self.gaussianBlur(grayscale)
+        T, binaryThresh = cv.threshold(image, self.binaryLimit, 255, cv.THRESH_BINARY+cv.THRESH_OTSU)
+        #print(T)
+        return binaryThresh
+
     def cleanImage(self, image):
-        kernel = np.ones((5,5),np.uint8)
-        dilatedImage = cv.dilate(image, kernel, None, iterations=1)
-        cleaned = cv.erode(dilatedImage, kernel, None, iterations=1)
-        return cleaned
+        kernel = np.ones((9,9),np.uint8)
+        eroded = cv.erode(image, kernel, None, iterations=1)
+        kernel = np.ones((9,9),np.uint8)
+        dilatedImage = cv.dilate(eroded, kernel, None, iterations=1)
+        return dilatedImage
+
+    def getSkewAngle(self, image):
+        kernel = cv.getStructuringElement(cv.MORPH_RECT, (30, 5))
+        dilate = cv.dilate(image, kernel, iterations=5)
+
+        # Find all contours
+        contours, hierarchy = cv.findContours(dilate, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
+        contours = sorted(contours, key = cv.contourArea, reverse = True)
+
+        # Find largest contour and surround in min area box
+        largestContour = contours[0]
+        minAreaRect = cv.minAreaRect(largestContour)
+
+        # Determine the angle. Convert it to the value that was originally used to obtain skewed image
+        angle = minAreaRect[-1]
+        if angle < -45:
+            angle = 90 + angle
+        
+        return -1.0 * angle
+        
+    def rotateImage(self, image, angle: float): 
+        newImage = image.copy()
+        (h, w) = newImage.shape[:2]
+        center = (w // 2, h // 2)
+        M = cv.getRotationMatrix2D(center, angle, 1.0)
+        newImage = cv.warpAffine(newImage, M, (w, h), flags=cv.INTER_CUBIC, borderMode=cv.BORDER_REPLICATE)
+        return newImage
+
+    def skewCorrection(self, image):
+        rotationAngle = self.getSkewAngle(image)
+        return self.rotateImage(image, rotationAngle)
+   
+    def perspectiveCorrection(self, image):
+        #dewarp
+        return image
 
     def calculateCFBoxDims(self):
         anchoBoxmm = 0
@@ -198,13 +256,12 @@ class imageFunctions:
         region_of_interest_image= cv.bitwise_and(self.thresh, region_of_interest)
         return region_of_interest_image
 
-    def extractReadingAreas(self, image, boxFactura, boxCF):
-        _, prodAreaLowerLim, prodAreaLeftLim, priceAreaRightLim = self.boxLimits(boxFactura)
-        _, prodAreaUpperLim, cfBoxLeft, _ = self.boxLimits(boxCF)
+    def extractReadingAreas(self, image, boxFactura):
+        prodAreaUpperLim, prodAreaLowerLim, prodAreaLeftLim, priceAreaRightLim = self.boxLimits(boxFactura)
         if (self.local != locales.Macro):
             prodAreaRightLim = round(self.croppedImgWidthPx*self.priceAreaDivisionLim) + prodAreaLeftLim
         else:
-            prodAreaRightLim = round(self.width/2)
+            prodAreaRightLim = round(self.width*0.6)
         priceAreaLeftLim = prodAreaRightLim
         priceAreaUpperLim = prodAreaUpperLim
         priceAreaLowerLim = prodAreaLowerLim
@@ -220,12 +277,15 @@ class imageFunctions:
         right = max(boxPoints[:,0])
         return upper, lower, left, right
     
-    def displayImage(self, img):
-        cv.namedWindow("output", cv.WINDOW_NORMAL)
-        cv.imshow('output', img)
-        key = cv.waitKey(0)
-        if key == ord('q'):
-            sys.exit()
+    def displayImage(self, img, show=True):
+        if show:
+            cv.namedWindow("output", cv.WINDOW_NORMAL)
+            cv.imshow('output', img)
+            key = cv.waitKey(0)
+            if key == ord('q'):
+                sys.exit()
+        else:
+            pass
 
     def displayImageBox(self, img, boxPoints):
         im3 = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
@@ -253,10 +313,10 @@ class imageFunctions:
         template = cv.cvtColor(template, cv.COLOR_BGR2GRAY)
         template = cv.Canny(template, 50, 200)
         (tH, tW) = template.shape[:2]
-        cv.imshow("Template", template)
+        #cv.imshow("Template", template)
         found = None
 
-        for scale in np.linspace(0.2, 2.0, 40)[::-1]:
+        for scale in np.linspace(0.75, 1.25, 10)[::-1]:
             resized = imutils.resize(img, width=int(img.shape[1]*scale))
             r = img.shape[1]/float(resized.shape[1])
             if resized.shape[0] < tH or resized.shape[1] < tW:
@@ -272,6 +332,7 @@ class imageFunctions:
 
             if found is None or maxVal > found[0]:
                 found = (maxVal, maxLoc, r)
+                print(r, scale)
 
         (_, maxLoc, r) = found
         (startX, startY) = (int(maxLoc[0] * r), int(maxLoc[1] * r))
@@ -279,8 +340,9 @@ class imageFunctions:
 
         img_color = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
         cv.rectangle(img_color, (startX, startY), (endX, endY), (0, 0, 255), 2)
-        cv.imshow("Image", img_color)
-        cv.waitKey(0)
+        self.displayImage(img_color)
+        #cv.imshow("Image", img_color)
+        #cv.waitKey(0)
         cv.imwrite('logo_found.jpg', img_color)
 
     def imageConditioning(self, dir, filename):
@@ -288,6 +350,8 @@ class imageFunctions:
         self.binaryThresh = self.normalThresholding(self.img)
         #self.binaryThresh = self.adaptiveThresholding(self.img)
         #self.displayImage(binaryThresh)
+        self.saveImage(self.binaryThresh, dir+"/binarized_"+filename)
+        self.binaryThresh = self.adaptiveThresholding(self.img)
         self.saveImage(self.binaryThresh, dir+"/binarized_"+filename)
         self.cleaned = self.cleanImage(self.binaryThresh)
         #self.displayImage(self.cleaned)
@@ -304,5 +368,70 @@ class imageFunctions:
 
     def textRegions(self, image):
         self.region =np.array([[0, self.height], [0, 0], [self.width, 0], [self.width, self.height]])
-        self.productRegion, self.priceRegion = self.extractReadingAreas(image, self.region, self.CFBox)
-        return self.productRegion, self.priceRegion
+        self.productRegion, self.priceRegion = self.extractReadingAreas(image, self.region)
+        return self.productRegion, self.priceRegion, self.region
+
+    def dprint(self, text, cond):
+        if cond:
+            print(text)
+        else:
+            pass
+
+    def dsaveImage(self, img, filename, cond):
+        if cond:
+            self.saveImage(img, filename)
+        else:
+            pass    
+
+    def plot_rgb(self, image):
+        plt.figure(figsize=(16,10))
+        return plt.imshow(cv.cvtColor(image, cv.COLOR_BGR2RGB))
+
+    def imagePreprocessing(self, image, showResults, dir, filename):
+        resized = self.scaling(image)
+        self.dprint("Resized", showResults)
+        #self.dsaveImage(resized, "Resized.jpg", showResults)
+        grayscale = self.grayscaling(resized)
+        self.dprint("Grayscale", showResults)
+        #self.dsaveImage(grayscale, "Grayscale.jpg", showResults)
+        filtered = self.filtering(grayscale)
+        self.dprint("Bilateral filter", showResults)
+        self.dsaveImage(filtered, "../Pruebas/Bilateral filter2.jpg", showResults)
+        binarized = self.OtsuThresholding(filtered)
+        #binarized = self.adaptiveThresholding(filtered)
+        self.dprint("Otsu binarization", showResults)
+        self.dsaveImage(binarized, "../Pruebas/Otsu binarization.jpg", showResults)
+        cleaned = self.cleanImage(binarized)
+        self.dprint("Dilate-Erode", showResults)
+        self.dsaveImage(cleaned, "../Pruebas/Dilate-Erode.jpg", showResults)
+        rotated = self.skewCorrection(cleaned)
+        self.saveImage(cleaned, dir+"/binarized_"+filename)
+        #Template matching funcionando pero no integrado 
+        #self.matchTemplate("../Images/Templates/DEVOTO_FM.jpg", cleaned)
+
+        #self.dprint("Deskewed", showResults)
+        #self.dsaveImage(rotated, "Deskewed.jpg", showResults)
+        #corrected = self.perspectiveCorrection(rotated)
+        #self.dprint("Dewarped", showResults)
+        #self.dsaveImage(corrected, "Dewarped.jpg", showResults)
+        # region = np.array([[0, self.height], [0, 0], [self.width, 0], [self.width, self.height]])
+        # blank = np.zeros_like(cleaned)
+        # boxRegion = cv.fillConvexPoly(blank, region, 255)
+        # boxRegionImage = cv.bitwise_and(cleaned, boxRegion)
+        # self.displayImage(boxRegionImage)
+        # text = OCRFunctions.readRegionText(OCRFunctions, region, cleaned, "aa", True)
+        # OCRFunctions.writeTextFile(OCRFunctions, text, "../Pruebas/wakawaka")
+        # d = pytesseract.image_to_data(cleaned, output_type=Output.DICT)
+        # n_boxes = len(d['level'])
+        # boxes = cv.cvtColor(cleaned.copy(), cv.COLOR_BGR2RGB)
+        # for i in range(n_boxes):
+        #     (x, y, w, h) = (d['left'][i], d['top'][i], d['width'][i], d['height'][i])    
+        #     boxes = cv.rectangle(boxes, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            
+        # self.plot_rgb(boxes)
+        # plt.show()
+        return cleaned
+
+if __name__ == "__main__":
+    preprocessing = imageFunctions("../Images/DEVOTO_FM/11.jpg", "DEVOTO_FM")
+    resultImg = preprocessing.imagePreprocessing(preprocessing.img, True)

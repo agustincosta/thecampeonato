@@ -25,13 +25,15 @@ for dirname in os.listdir(imagesDir):
         try:
             print(imageFolder, localesDictionary[imageFolder], filename)
             preprocessing = img_funcs.imageFunctions("../Images/"+imageFolder+"/"+filename, localesDictionary[imageFolder])
-            CFBoxFound, cleanedImg = preprocessing.imageConditioning("../Results/"+imageFolder, filename)
-            productRegion, priceRegion = preprocessing.textRegions(cleanedImg)
+            resultImg = preprocessing.imagePreprocessing(preprocessing.img, False, "../Results/"+imageFolder, filename)
+            productRegion, priceRegion, completeImgRegion = preprocessing.textRegions(resultImg)
 
-            productsText = ocr_funcs.OCRFunctions.readRegionText(ocr_funcs, productRegion, cleanedImg, 'Prod', True)
-            ocr_funcs.OCRFunctions.writeTextFile(ocr_funcs, productsText, imageFolder+'/products'+filename)
-            priceText = ocr_funcs.OCRFunctions.readRegionText(ocr_funcs, priceRegion, cleanedImg, 'Price', False)
-            ocr_funcs.OCRFunctions.writeTextFile(ocr_funcs, priceText, imageFolder+'/price'+filename)
+            #productsText = ocr_funcs.OCRFunctions.readRegionText(ocr_funcs, productRegion, resultImg, 'Prod', True)
+            #ocr_funcs.OCRFunctions.writeTextFile(ocr_funcs, productsText, imageFolder+'/products'+filename)
+            #priceText = ocr_funcs.OCRFunctions.readRegionText(ocr_funcs, priceRegion, resultImg, 'Price', False)
+            #ocr_funcs.OCRFunctions.writeTextFile(ocr_funcs, priceText, imageFolder+'/price'+filename)
+            completeText = ocr_funcs.OCRFunctions.readRegionText(ocr_funcs, completeImgRegion, resultImg, None, True)
+            ocr_funcs.OCRFunctions.writeTextFile(ocr_funcs, completeText, imageFolder+'/OCR_'+filename)
         except Exception as e:
             print(e)
             continue
