@@ -116,10 +116,12 @@ class imageFunctions:
         return binaryThresh
 
     def cleanImage(self, image):
-        kernel = np.ones((9,9),np.uint8)
+        if self.local==locales.Macro:
+            kernel = np.ones((3,3),np.uint8)
+        else:
+            kernel = np.ones((9,9),np.uint8)
         eroded = cv.erode(image, kernel, None, iterations=1)
-        kernel = np.ones((9,9),np.uint8)
-        dilatedImage = cv.dilate(eroded, kernel, None, iterations=1)
+        dilatedImage = cv.dilate(eroded, kernel, None, iterations=1)   
         return dilatedImage
 
     def getSkewAngle(self, image):
@@ -396,15 +398,12 @@ class imageFunctions:
         #self.dsaveImage(grayscale, "Grayscale.jpg", showResults)
         filtered = self.filtering(grayscale)
         self.dprint("Bilateral filter", showResults)
-        self.dsaveImage(filtered, "../Pruebas/Bilateral filter2.jpg", showResults)
         binarized = self.OtsuThresholding(filtered)
         #binarized = self.adaptiveThresholding(filtered)
         self.dprint("Otsu binarization", showResults)
-        self.dsaveImage(binarized, "../Pruebas/Otsu binarization.jpg", showResults)
         cleaned = self.cleanImage(binarized)
         self.dprint("Dilate-Erode", showResults)
-        self.dsaveImage(cleaned, "../Pruebas/Dilate-Erode.jpg", showResults)
-        rotated = self.skewCorrection(cleaned)
+        #rotated = self.skewCorrection(cleaned)
         self.saveImage(cleaned, dir+"/binarized_"+filename)
         #Template matching funcionando pero no integrado 
         #self.matchTemplate("../Images/Templates/DEVOTO_FM.jpg", cleaned)
