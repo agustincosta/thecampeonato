@@ -66,6 +66,29 @@ class OCRFunctions:
         self.dbhandler.closeConnection()
         return output
 
+    def parseTextFile(self, textFile):
+        with open('../Results/'+textFile+'.txt', 'w') as txtFile:
+
+            startFound = False
+            while not startFound:
+                line = txtFile.readline()
+                cf  = SequenceMatcher(None, line, "CONSUMO FINAL")
+                moneda = SequenceMatcher(None, line, "MONEDA: UYU")
+                if ((cf >= 0.6) or (moneda >= 0.6)):
+                    startFound = True
+
+            endFound = False
+            while not endFound:
+                line = txtFile.readline()
+                total  = SequenceMatcher(None, line, "TOTAL:")
+                tarjeta  = SequenceMatcher(None, line, "Tarjeta credito/debito")
+                efectivo  = SequenceMatcher(None, line, "Efectivo")
+                if ((total >= 0.5) or (tarjeta >= 0.5) or (efectivo >= 0.5)):
+                    endFound = True     
+
+                words = line.split()
+                #encontrar el precio y ponerlo en una columna, juntar lo demas    
+
     def priceTextConditioning(self, text):
         pass
 
