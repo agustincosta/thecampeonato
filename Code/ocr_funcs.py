@@ -66,38 +66,93 @@ class OCRFunctions:
         self.dbhandler.closeConnection()
         return output
 
+    def compareLine(self, line, expression, thresh=0.95):
+        FirstWord = False
+        indx = 0 
+        words = line.split()
+        exp_words = expression.split()
+        ratios = [0]*len(exp_words)
+
+        if len(words) == 0:
+            pass
+
+        #Busca la primera palabra que coincida
+        for j in range(0,len(words)-1):
+            ratios[0] = SequenceMatcher(None, words[j], exp_words[0]).ratio()
+            if (ratios[0] > thresh):
+                indx = j
+                FirstWord = True
+                break
+        
+        #Compara las siguientes hasta encontrar la frase entera    
+        if (len(exp_words) >= 2) and FirstWord:
+            for i in range(1,len(exp_words)):
+                ratios[i] = SequenceMatcher(None, words[indx+i], exp_words[i]).ratio()
+        
+        result = np.prod(ratios)
+
+        return result
+
+    def findSubstring(self, line, expression):
+        result = line.find(expression)
+        if result == -1:
+            return False
+        else:
+            print(line + expression)
+            return True
+
     def parseTextFile(self, textFile):
-        with open('../Results/'+textFile+'.txt', 'w') as txtFile:
+        with open('../Results/'+textFile+'.txt', 'r') as txtFile:
 
             startFound = False
             while not startFound:
                 line = txtFile.readline()
-                cf  = SequenceMatcher(None, line, "CONSUMO FINAL")
-                moneda = SequenceMatcher(None, line, "MONEDA: UYU")
-                if ((cf >= 0.6) or (moneda >= 0.6)):
+                if len(line) == 0:
+                    break
+                cf  = self.compareLine(self, line, "CONSUMO FINAL")
+                moneda = self.compareLine(self, line, "MONEDA: UYU")
+                if (cf > 0.9) or (moneda > 0.9):
                     startFound = True
-
+                    print("START " + line)
+                cf = 0
+                moneda = 0
             endFound = False
-            while not endFound:
-                line = txtFile.readline()
-                total  = SequenceMatcher(None, line, "TOTAL:")
-                tarjeta  = SequenceMatcher(None, line, "Tarjeta credito/debito")
-                efectivo  = SequenceMatcher(None, line, "Efectivo")
-                if ((total >= 0.5) or (tarjeta >= 0.5) or (efectivo >= 0.5)):
-                    endFound = True     
-
-                words = line.split()
-                #encontrar el precio y ponerlo en una columna, juntar lo demas    
+            if startFound:
+                while not endFound:
+                    line = txtFile.readline()
+                    if len(line) == 0:
+                        break
+                    print(line)
+                    total  = self.compareLine(self, line, "TOTAL:")
+                    tarjeta  = self.compareLine(self, line, "Tarjeta credito/debito")
+                    efectivo  = self.compareLine(self, line, "Efectivo")
+                    if (total > 0.9) or (tarjeta > 0.9) or (efectivo > 0.9):
+                        endFound = True   
+                        print("END: " + line)  
+                    
+                    #print(line)
+                    
+                    # if len(line) >= 25:
+                    #     words = line.split()
+                    #     print("Linea producto")
+                    #     print(words)
+                    #encontrar el precio y ponerlo en una columna, juntar lo demas
+                    
+        txtFile.close()    
 
     def priceTextConditioning(self, text):
         pass
 
     def writeTextFile(self, text, filename):
-        with open('../Results/'+filename+'.txt', 'w') as txtFile:
+        file = filename.replace(".jpg","")
+        with open('../Results/'+file+'.txt', 'w') as txtFile:
             txtFile.write(text)
         txtFile.close()
 
 if __name__ == "__main__":
     ocr = OCRFunctions()
-    with open('../Results/DEVOTO/products4.jpg.txt', 'r') as txtFile:
-        print(ocr.insertProductDataToDb(txtFile, "test"))
+    txtFile = 'DEVOTO/OCR_20'
+    ocr.parseTextFile(txtFile)
+    #with open('../Results/DEVOTO/OCR_18.txt', 'r') as txtFile:
+        
+        #print(ocr.insertProductDataToDb(txtFile, "test"))

@@ -14,26 +14,30 @@ localesDictionary = {"DEVOTO" : img_funcs.locales.Devoto,
                      "TI" : img_funcs.locales.TiendaInglesa
 }
 
-imagesDir = "../Images"
-for dirname in os.listdir(imagesDir):
-    imageFolder = dirname
+ocr_funcs.OCRFunctions.parseTextFile(ocr_funcs.OCRFunctions, 'DEVOTO/OCR_18')
+
+# imagesDir = "../Images"
+# for dirname in os.listdir(imagesDir):
+#     imageFolder = dirname
     
-    if dirname == "Templates":
-        continue
+#     if dirname == "Templates":
+#         continue
 
-    for filename in os.listdir("../Images/"+imageFolder):
-        try:
-            print(imageFolder, localesDictionary[imageFolder], filename)
-            preprocessing = img_funcs.imageFunctions("../Images/"+imageFolder+"/"+filename, localesDictionary[imageFolder])
-            resultImg = preprocessing.imagePreprocessing(preprocessing.img, False, "../Results/"+imageFolder, filename)
-            productRegion, priceRegion, completeImgRegion = preprocessing.textRegions(resultImg)
+#     for filename in os.listdir("../Images/"+imageFolder):
+#         try:
+#             print(imageFolder, localesDictionary[imageFolder], filename)
+#             #preprocessing = img_funcs.imageFunctions("../Images/"+imageFolder+"/"+filename, localesDictionary[imageFolder])
+#             #resultImg = preprocessing.imagePreprocessing(preprocessing.img, False, "../Results/"+imageFolder, filename)
+#             #productRegion, priceRegion, completeImgRegion = preprocessing.textRegions(resultImg)
 
-            #productsText = ocr_funcs.OCRFunctions.readRegionText(ocr_funcs, productRegion, resultImg, 'Prod', True)
-            #ocr_funcs.OCRFunctions.writeTextFile(ocr_funcs, productsText, imageFolder+'/products'+filename)
-            #priceText = ocr_funcs.OCRFunctions.readRegionText(ocr_funcs, priceRegion, resultImg, 'Price', False)
-            #ocr_funcs.OCRFunctions.writeTextFile(ocr_funcs, priceText, imageFolder+'/price'+filename)
-            completeText = ocr_funcs.OCRFunctions.readRegionText(ocr_funcs, completeImgRegion, resultImg, None, True)
-            ocr_funcs.OCRFunctions.writeTextFile(ocr_funcs, completeText, imageFolder+'/OCR_'+filename)
-        except Exception as e:
-            print(e)
-            continue
+#             #productsText = ocr_funcs.OCRFunctions.readRegionText(ocr_funcs, productRegion, resultImg, 'Prod', True)
+#             #ocr_funcs.OCRFunctions.writeTextFile(ocr_funcs, productsText, imageFolder+'/products'+filename)
+#             #priceText = ocr_funcs.OCRFunctions.readRegionText(ocr_funcs, priceRegion, resultImg, 'Price', False)
+#             #ocr_funcs.OCRFunctions.writeTextFile(ocr_funcs, priceText, imageFolder+'/price'+filename)
+#             #completeText = ocr_funcs.OCRFunctions.readRegionText(ocr_funcs, completeImgRegion, resultImg, None, True)
+#             #ocr_funcs.OCRFunctions.writeTextFile(ocr_funcs, completeText, imageFolder+'/OCR_'+filename)
+#             file = filename.replace(".jpg","")
+#             ocr_funcs.OCRFunctions.parseTextFile(ocr_funcs.OCRFunctions, imageFolder+'/OCR_'+file)
+#         except Exception as e:
+#             print(e)
+#             continue
