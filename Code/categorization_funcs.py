@@ -1,4 +1,5 @@
 import difflib
+from enum import unique
 import numpy as np
 
 class categorization:
@@ -37,6 +38,55 @@ class categorization:
         for m in matches:
             indexes.append(np.where(productsList == m))
         return matches, indexes
+
+    def selectMainCategory(self, categories):
+        #print(categories)
+        try:
+            if (categories[0] == categories[1]):
+                return categories[0]
+            elif (categories[0] == categories[2]):
+                return categories[0]
+            elif (categories[1] == categories[2]):
+                return categories[1]
+            else:
+                return categories[0]
+        except:
+            if len(categories) == 0:
+                return "OTROS"
+            else:
+                return categories[0]
+
+    def addCategoriesTotal(self, categories, amounts):
+        uniqueCategories = []
+
+        for cat in categories:
+            if not (cat in uniqueCategories):
+                uniqueCategories.append(cat)
+
+        uniqueAmounts = np.zeros_like(uniqueCategories, dtype=float)
+        i = 0
+
+        for i in range(len(uniqueCategories)):
+            for j in range(len(categories)):
+                if (uniqueCategories[i] == categories[j]):
+                    uniqueAmounts[i] = amounts[j] + uniqueAmounts[i]
+
+        return uniqueCategories, uniqueAmounts    
+
+    def categorizeItems(self, items, cutoff=0.9):
+        productsList = self.dataset[:,1]
+        #print(items)
+        categorized = []
+        for item in items[0]:
+            matches = difflib.get_close_matches(item, productsList, n=3, cutoff=cutoff)
+            mainCategory = self.selectMainCategory(matches)
+            index = np.where(productsList==mainCategory)
+
+            if index == []:
+                index = [1057]
+            categorized.append(self.dataset[index,0][0][0])
+        return categorized
+
 
 if __name__ == "__main__":
     cat = categorization("../Dataset/categorias.csv") 
