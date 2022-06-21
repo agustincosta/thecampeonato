@@ -70,7 +70,13 @@ class imageFunctions:
     CFBox = 0
     stopProcess = False
 
-    def __init__(self, imgPath, supermarket):
+    def __init__(self, imgPath:str, supermarket:locales):
+        """Inicializacion de clase. Lee imagen y obtiene parametros basicos
+
+        Args:
+            imgPath (str): Ruta de imagen a leer de archivo
+            supermarket (locales): Enum de local al que pertenece la factura
+        """        
         self.getImage(imgPath)
         self.local = supermarket
         self.height, self.width = self.img.shape[:2]
@@ -78,44 +84,111 @@ class imageFunctions:
         self.croppedImgWidthPx = self.width
         self.stopProcess = False
 
-    def getImage(self, imgPath):
+    def getImage(self, imgPath:str):
+        """Lee imagen de archivo
+
+        Args:
+            imgPath (str): Ruta de imagen
+        """        
         self.img = cv.imread(imgPath)
         if self.img is None:
             sys.exit("Could not open the image")
 
-    def scaling(self, image, scale=2):
+    def scaling(self, image:cv.Mat, scale=2) -> cv.Mat:
+        """Escala imagen por el factor dado
+
+        Args:
+            image (cv.Mat): Imagen a escalar
+            scale (int, optional): Factor de escalado. Defaults to 2.
+
+        Returns:
+            cv.Mat: Imagen escalada
+        """              
         self.height = self.height*scale
         self.width = self.width*scale
         return cv.resize(image, None, fx=scale, fy=scale, interpolation=cv.INTER_CUBIC)
 
-    def grayscaling(self, image):
+    def grayscaling(self, image:cv.Mat) -> cv.Mat:
+        """Convierte imagen a escala de grises
+
+        Args:
+            image (cv.Mat): Imagen a color
+
+        Returns:
+            cv.Mat: Imagen en escala de grises
+        """        
         gray_img = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
         return gray_img
 
-    def gaussianBlur(self, image):
+    def gaussianBlur(self, image:cv.Mat) -> cv.Mat:
+        """Aplica filtro gaussiano para suavizar pixeles con kernel predefinido de 7x7
+
+        Args:
+            image (cv.Mat): Imagen a filtrar
+
+        Returns:
+            cv.Mat: Imagen filtrada
+        """        
         return cv.GaussianBlur(image, (7, 7), 0)
 
-    def filtering(self, image):
+    def filtering(self, image:cv.Mat) -> cv.Mat:
+        """Aplica filtro bilateral a imagen para suavizar con diametro 19
+
+        Args:
+            image (cv.Mat): Imagen a filtrar
+
+        Returns:
+            (cv.Mat): Imagen filtrada
+        """        
         bilateral = cv.bilateralFilter(image, 19, 100, 100)
         return bilateral
 
-    def adaptiveThresholding(self, image):
+    def adaptiveThresholding(self, image:cv.Mat) -> cv.Mat:
+        """Binarizado de imagen con umbral adaptivo. Tamaño de area de umbral dado por variables globales de clase
+
+        Args:
+            image (cv.Mat): Imagen en escala de grises
+
+        Returns:
+            cv.Mat: Imagen en blanco y negro
+        """        
         adaptThresh = cv.adaptiveThreshold(image, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, self.thresholdingBlockSize, self.thresholdingConstant)
         return adaptThresh
 
-    def normalThresholding(self, image):
+    def normalThresholding(self, image:cv.Mat) -> cv.Mat:
+        """Binarizado con umbral fijo
+
+        Args:
+            image (cv.Mat): Imagen en escala de grises
+
+        Returns:
+            cv.Mat: Imagen en blanco y negro
+        """        
         grayscale = self.grayscaling(image)
         _, binaryThresh = cv.threshold(grayscale, self.binaryLimit, 255, cv.THRESH_BINARY)
         return binaryThresh
 
-    def OtsuThresholding(self, image):
-        #grayscale = self.grayscaling(image)
-        #blurred = self.gaussianBlur(grayscale)
+    def OtsuThresholding(self, image:cv.Mat) -> cv.Mat:
+        """Binarizado con metodo Otsu. Mejor que umbral fijo y mas rapido que adaptivo
+
+        Args:
+            image (cv.Mat): Imagen en escala de grises
+
+        Returns:
+            cv.Mat: Imagen en blanco y negro
+        """        
         T, binaryThresh = cv.threshold(image, self.binaryLimit, 255, cv.THRESH_BINARY+cv.THRESH_OTSU)
-        #print(T)
         return binaryThresh
 
-    def cleanImage(self, image):
+    def cleanImage(self, image:cv.Mat) -> cv.Mat:
+        """Erode y dilate para eliminar puntos sueltos y unir lineas cortadas
+
+        Args:
+            image (cv.Mat): Imagen de entrada
+
+        Returns:
+            cv.Mat: Imagen restaurada
+        """        
         if self.local==locales.Macro:
             kernel = np.ones((3,3),np.uint8)
         else:
@@ -124,7 +197,15 @@ class imageFunctions:
         dilatedImage = cv.dilate(eroded, kernel, None, iterations=1)   
         return dilatedImage
 
-    def getSkewAngle(self, image):
+    def getSkewAngle(self, image:cv.Mat) -> float:
+        """Obtiene angulo de orientacion de imagen a partir de parrafos y otros bloques
+
+        Args:
+            image (cv.Mat): Imagen de entrada
+
+        Returns:
+            float: Angulo de orientacion
+        """        
         kernel = cv.getStructuringElement(cv.MORPH_RECT, (30, 5))
         dilate = cv.dilate(image, kernel, iterations=5)
 
@@ -143,7 +224,16 @@ class imageFunctions:
         
         return -1.0 * angle
         
-    def rotateImage(self, image, angle: float): 
+    def rotateImage(self, image:cv.Mat, angle: float) -> cv.Mat: 
+        """Rotacion de imagen por angulo dado
+
+        Args:
+            image (cv.Mat): Imagen a rotar
+            angle (float): Angulo de rotacion
+
+        Returns:
+            cv.Mat: Imagen rotada
+        """        
         newImage = image.copy()
         (h, w) = newImage.shape[:2]
         center = (w // 2, h // 2)
@@ -151,7 +241,15 @@ class imageFunctions:
         newImage = cv.warpAffine(newImage, M, (w, h), flags=cv.INTER_CUBIC, borderMode=cv.BORDER_REPLICATE)
         return newImage
 
-    def skewCorrection(self, image):
+    def skewCorrection(self, image:cv.Mat) -> cv.Mat:
+        """Corrige la rotacion de la imagen para que este derecha
+
+        Args:
+            image (cv.Mat): Imagen mal orientada
+
+        Returns:
+            cv.Mat: Imagen derecha
+        """        
         rotationAngle = self.getSkewAngle(image)
         return self.rotateImage(image, rotationAngle)
    
@@ -160,6 +258,8 @@ class imageFunctions:
         return image
 
     def calculateCFBoxDims(self):
+        """Calcula dimensiones en pixeles de caja de "CONSUMO FINAL" en imagen dependiendo del local
+        """        
         anchoBoxmm = 0
         altoBoxmm = 0
         if self.local == locales.TiendaInglesa:
@@ -191,7 +291,16 @@ class imageFunctions:
         self.consumoFinalBoxWidthPx = self.width*anchoBoxmm/self.ticketWidthmm
         self.consumoFinalBoxHeightPx = altoBoxmm*self.consumoFinalBoxWidthPx/anchoBoxmm 
 
-    def detectCFBox(self, image):
+    def detectCFBox(self, image:cv.Mat):
+        """Detecta caja de "CONSUMO FINAL" en ticket y obtiene su bounding box
+
+        Args:
+            image (cv.Mat): Imagen de ticket
+
+        Returns:
+            box (cv.boxPoints): Extremos de caja
+            boxFound (bool): Caja encontrada
+        """        
         boxFound = False
         kernel = np.ones((15,30),np.uint8)
         contourImg = cv.erode(image, kernel, None, iterations=1)
@@ -246,19 +355,40 @@ class imageFunctions:
         return box, boxFound
     
     def joinLetters(self):
+        """Erode y dilate para juntar lineas cortadas por errores de impresion o foto
+
+        Returns:
+            cv.Mat: Imagen corregida
+        """        
         kernel = np.ones((5,5),np.uint8)
         erodedImage = cv.erode(self.cleaned, kernel, None, iterations=1)
         self.joined = cv.dilate(erodedImage, kernel, None, iterations=1)
         return self.joined
 
     def ROI(self, box):
+        """Recorta region de interes de imagen 
+
+        Args:
+            box (_type_): Extremos de region
+
+        Returns:
+            _type_: _description_
+        """        
         #ROI= np.array([[(120,self.height),(120,220),(750,220),(750,self.height)]], dtype= np.int32)
         blank= np.zeros_like(self.gray_img)
         region_of_interest= cv.fillConvexPoly(blank, box,255)
         region_of_interest_image= cv.bitwise_and(self.thresh, region_of_interest)
         return region_of_interest_image
 
-    def extractReadingAreas(self, image, boxFactura):
+    def extractReadingAreas(self, boxFactura):
+        """Obtiene dos regiones, area de productos y area de precios a partir de la region de interes de la factura
+
+        Args:
+            boxFactura (np.array): Extremos de region de interes
+
+        Returns:
+            productsBox, pricesBox (np.array): Extremos de regiones de productos y precios
+        """        
         prodAreaUpperLim, prodAreaLowerLim, prodAreaLeftLim, priceAreaRightLim = self.boxLimits(boxFactura)
         if (self.local != locales.Macro):
             prodAreaRightLim = round(self.croppedImgWidthPx*self.priceAreaDivisionLim) + prodAreaLeftLim
@@ -273,6 +403,14 @@ class imageFunctions:
         return productsBox, pricesBox
 
     def boxLimits(self, boxPoints):
+        """Obtiene los limites de una caja (arriba, abajo, izquierda, derecha)
+
+        Args:
+            boxPoints (np.array): Extremos de region
+
+        Returns:
+            upper, lower, left, right (int): Pixeles
+        """        
         lower = max(boxPoints[:,1])
         upper = min(boxPoints[:,1])
         left = min(boxPoints[:,0])
@@ -280,6 +418,12 @@ class imageFunctions:
         return upper, lower, left, right
     
     def displayImage(self, img, show=True):
+        """Muestra imagen en popup
+
+        Args:
+            img (cv.Mat): Imagen a mostrar
+            show (bool, optional): Mostrar o no. Defaults to True.
+        """        
         if show:
             cv.namedWindow("output", cv.WINDOW_NORMAL)
             cv.imshow('output', img)
@@ -290,6 +434,12 @@ class imageFunctions:
             pass
 
     def displayImageBox(self, img, boxPoints):
+        """Muestra imagen con caja dibujada
+
+        Args:
+            img (cv.Mat): Imagen
+            boxPoints (np.array): Extremos de caja
+        """        
         im3 = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
         cv.drawContours(im3, [boxPoints], 0, (0,0,255), 8)
         cv.namedWindow("output", cv.WINDOW_NORMAL)
@@ -299,6 +449,13 @@ class imageFunctions:
             sys.exit()
 
     def displayImageContours(self, img, contour, idx):
+        """Muestra imagen con contornos dibujados
+
+        Args:
+            img (cv.Mat): Imagen
+            contour (cv.contour): Lista de figuras geometricas a dibujar
+            idx (int): Indice de cual dibujar, -1 = todas
+        """        
         im3 = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
         cv.drawContours(im3, contour, idx, (0,0,255), 8)
         cv.namedWindow("output", cv.WINDOW_NORMAL)
@@ -308,9 +465,21 @@ class imageFunctions:
             sys.exit()
 
     def saveImage(self, img, filename):
+        """Guarda imagen a archivo
+
+        Args:
+            img (cv.Mat): Imagen
+            filename (str): Nombre y ruta de archivo
+        """        
         cv.imwrite(filename, img)
 
-    def matchTemplate(self, temp, img):
+    def matchTemplate(self, temp:cv.Mat, img:cv.Mat):
+        """Matchea template dentro de una imagen. Se usa para buscar logo de super en ticket
+
+        Args:
+            temp (cv.Mat): Template
+            img (cv.Mat): Imagen
+        """        
         template = cv.imread(temp)
         template = cv.cvtColor(template, cv.COLOR_BGR2GRAY)
         template = cv.Canny(template, 50, 200)
@@ -348,6 +517,18 @@ class imageFunctions:
         cv.imwrite('logo_found.jpg', img_color)
 
     def imageConditioning(self, dir, filename):
+        """Funcion previa de preprocesamiento. No usada
+
+        Args:
+            dir (_type_): _description_
+            filename (_type_): _description_
+
+        Raises:
+            RuntimeError: _description_
+
+        Returns:
+            _type_: _description_
+        """        
         #self.displayImage(self.img)
         self.binaryThresh = self.normalThresholding(self.img)
         #self.binaryThresh = self.adaptiveThresholding(self.img)
@@ -368,18 +549,39 @@ class imageFunctions:
 
         return CFBoxFound, self.cleaned
 
-    def textRegions(self, image):
+    def textRegions(self, image:cv.Mat):
+        """Obtiene regiones para OCR
+
+        Args:
+            image (cv.Mat): Imagen
+
+        Returns:
+            self.productRegion, self.priceRegion, self.region (np.array): Regiones de producto, precio y ticket completo
+        """        
         self.region =np.array([[0, self.height], [0, 0], [self.width, 0], [self.width, self.height]])
         self.productRegion, self.priceRegion = self.extractReadingAreas(image, self.region)
         return self.productRegion, self.priceRegion, self.region
 
-    def dprint(self, text, cond):
+    def dprint(self, text, cond:bool):
+        """Debug print condicional
+
+        Args:
+            text (Any): Data
+            cond (bool): Imprimir o no
+        """        
         if cond:
             print(text)
         else:
             pass
 
-    def dsaveImage(self, img, filename, cond):
+    def dsaveImage(self, img:cv.Mat, filename:str, cond:bool):
+        """Debug save image condicional
+
+        Args:
+            img (cv.Mat): Imagen a guardar
+            filename (str): Nombre del archivo con ruta y extension
+            cond (bool): Guardar o no
+        """        
         if cond:
             self.saveImage(img, filename)
         else:
@@ -389,7 +591,18 @@ class imageFunctions:
         plt.figure(figsize=(16,10))
         return plt.imshow(cv.cvtColor(image, cv.COLOR_BGR2RGB))
 
-    def imagePreprocessing(self, image, showResults, dir, filename):
+    def imagePreprocessing(self, image:cv.Mat, showResults:bool, dir:str, filename:str) -> cv.Mat:
+        """Funcion de preprocesamiento de imagen para OCR. Encadena varias funciones anteriores para lograr una imagen legible
+
+        Args:
+            image (cv.Mat): Imagen de entrada
+            showResults (bool): Mostrar resultados intermedios
+            dir (str): Directorio de imagen (solo directorio, no nombre)
+            filename (str): Nombre de archivo (con extension) para guardar resultado
+
+        Returns:
+            cv.Mat: Imagen preprocesada
+        """        
         resized = self.scaling(image)
         self.dprint("Resized", showResults)
         #self.dsaveImage(resized, "Resized.jpg", showResults)

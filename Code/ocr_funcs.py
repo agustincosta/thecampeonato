@@ -13,9 +13,22 @@ class OCRFunctions:
     dbhandler = None
 
     def __init__(self):
+        """Inicializacion de clase
+        """        
         self.dbhandler = db_funcs.DBFunctions()
 
     def readRegionText(self, region, image, filename, includeLetters):
+        """Hace OCR de una region de una imagen a partir de sus 4 esquinas
+
+        Args:
+            region (list): Esquinas del poligono
+            image (image): Imagen objetivo
+            filename (string): Nombre de archivo txt a escribir
+            includeLetters (bool): Incluir o excluir letras de los posibles caracteres a leer
+
+        Returns:
+            text (string): Texto leido por OCR de la region
+        """        
         blank = np.zeros_like(image)
         boxRegion = cv.fillConvexPoly(blank, region, 255)
         boxRegionImage = cv.bitwise_and(image, boxRegion)
@@ -35,6 +48,14 @@ class OCRFunctions:
         return text
     
     def isfloat(self, value):
+        """Verifica si una string puede ser convertida a float
+
+        Args:
+            value (string): String a verificar
+
+        Returns:
+            _ (bool): Es o no es float
+        """        
         try:
             float(value)
             return True
