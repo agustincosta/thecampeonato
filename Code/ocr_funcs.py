@@ -1,11 +1,11 @@
 import cv2 as cv
 import numpy as np
-import sys
-from PIL import Image
-from enum import Enum
+# import sys
+# from PIL import Image
+# from enum import Enum
 import pytesseract
 from difflib import SequenceMatcher
-import imutils
+# import imutils
 import db_funcs
 
 class OCRFunctions:
