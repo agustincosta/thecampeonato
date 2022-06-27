@@ -1,11 +1,11 @@
-from ast import If
+# from ast import If
 import numpy as np
 import psycopg2
 #import pandas
 import matplotlib.pyplot as plt
 #from sqlalchemy import create_engine
 import categorization_funcs
-import datetime
+# import datetime
 import csv
 
 class DBFunctions:

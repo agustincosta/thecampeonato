@@ -1,14 +1,14 @@
 import cv2 as cv
 import numpy as np
 import sys
-from PIL import Image
-from enum import Enum
+# from PIL import Image
+# from enum import Enum
 from difflib import SequenceMatcher
 import imutils
 from ocr_funcs import OCRFunctions
 import matplotlib.pyplot as plt
-import pytesseract
-from pytesseract import Output
+# import pytesseract
+# from pytesseract import Output
 
 class locales(Enum):
     TiendaInglesa = 1

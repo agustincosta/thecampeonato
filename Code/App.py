@@ -1,6 +1,6 @@
 import img_funcs
 import ocr_funcs
-import os
+# import os
 #import db_funcs
 
 localesDictionary = {"DEVOTO" : img_funcs.locales.Devoto,
