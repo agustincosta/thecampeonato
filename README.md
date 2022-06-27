@@ -24,3 +24,10 @@ docker build -t myapp-dev .
 ```sh
 flake8
 ```
+
+## Run tests locally
+
+1. Run pytest:
+```sh
+pytest Code/tests/
+```
