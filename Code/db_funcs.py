@@ -1,4 +1,4 @@
-from ast import If
+#from ast import If
 import numpy as np
 import psycopg2
 #import pandas
@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import categorization_funcs
 import datetime
 import csv
+import calendar
 
 class DBFunctions:
     cursor = None
@@ -118,9 +119,10 @@ class DBFunctions:
         data = self.cursor.fetchone()
 
         if self.cursor.rowcount == 0:
-            current_pk_id = 0
+            initial_pk_id = 0
         else:
-            current_pk_id = data[0] + 1
+            initial_pk_id = data[0] + 1
+        current_pk_id = 0
 
         select_query = "SELECT * FROM processed_purchases_table WHERE purchase_id = " + str(purchase_id)
         self.cursor.execute(select_query)
@@ -128,7 +130,7 @@ class DBFunctions:
 
         if self.cursor.rowcount == 0:
             for i in range (len(uniqueAmts)):
-                current_pk_id = current_pk_id + i
+                current_pk_id = initial_pk_id + i
                 insert_query = "INSERT INTO processed_purchases_table (id,purchase_id,category,amount,user_id,purchase_date) VALUES (%s,%s,%s,%s,%s,%s)"
                 data = (current_pk_id, purchase_id, uniqueCats[i], uniqueAmts[i], user_id, purchase_date)
                 self.cursor.execute(insert_query, data)
@@ -256,8 +258,10 @@ class DBFunctions:
             categories (list[string]): Lista de categorias para cada producto del mes
             RecordFound (bool): Indica si existen compras para ese user para el mes
         """        
-        select_query = ("SELECT * FROM general_table WHERE user_id = " + str(user_id) + " AND (timestamp BETWEEN '" + str(year) + "-" + str(month) + "-1' AND '" + str(year) + "-" + str(month) + "-31')")
-        self.cursor.execute(select_query)
+        select_query = ("SELECT * FROM general_table WHERE user_id = %s AND (timestamp BETWEEN '%s-%s-1' AND '%s-%s-%s')")
+        end_day = calendar.monthrange(year, month)[1]
+        data = (user_id, year, month, year, month, end_day)
+        self.cursor.execute(select_query, data)
         user_mthly_general = np.array(self.cursor.fetchall())
 
         if self.cursor.rowcount != 0:
@@ -433,8 +437,3 @@ class DBFunctions:
         self.cursor.close()
         self.conn.commit()
         self.conn.close()
-
-if __name__ == '__main__':
-    db = DBFunctions()
-    #db.getGroupMonthlyPurchases(2, 5, 2021, True)
-    db.analyseUserMonthlyPurchases(3, 6, 2021, False)
