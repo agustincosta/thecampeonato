@@ -2,7 +2,7 @@ import difflib
 # from enum import unique
 import numpy as np
 
-class categorization:
+class Categorization:
 
     categories = ["BEBIDAS",
                 "PANADERIA",
@@ -33,8 +33,8 @@ class categorization:
             filePath (string): ruta del archivo .csv
         """        
         self.dataset = []
-        with open(filePath) as file:
-            self.dataset = np.loadtxt(file, dtype=str, delimiter=",")
+        with open(filePath, newline='', encoding='latin-1') as file:
+            self.dataset = np.loadtxt(file, dtype=str, delimiter=";")
 
     def getCloseMatches(self, word, numResults, cutoff):
         """Obtiene los n resultados mas cercanos en dataset y el indice asociado
@@ -128,16 +128,3 @@ class categorization:
                 index = [1057]
             categorized.append(self.dataset[index,0][0][0])
         return categorized
-
-
-if __name__ == "__main__":
-    cat = categorization("../Dataset/categorias.csv") 
-    matches1, indexes1 = cat.getCloseMatches("AGUA", 3, 0.8) 
-    matches2, indexes2 = cat.getCloseMatches("JANE", 3, 0.8)
-    matches3, indexes3 = cat.getCloseMatches("LAVAR", 3, 0.8)
-    print(matches1)
-    print(indexes1) 
-    print(matches2)
-    print(indexes2)
-    print(matches3)
-    print(indexes3)

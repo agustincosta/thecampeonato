@@ -109,7 +109,7 @@ class DBFunctions:
             uniqueCats (list[string]): Lista de las categorias 
             uniqueAmts (np.array[float]): Array de total para cada categoria
         """          
-        cat = categorization_funcs.categorization("../Dataset/categorias.csv")
+        cat = categorization_funcs.Categorization("../Dataset/categorias.csv")
         categories = cat.categorizeItems(labels, cutoff=0.4)
         uniqueCats, uniqueAmts = cat.addCategoriesTotal(categories, amounts)
 
@@ -218,7 +218,7 @@ class DBFunctions:
 
             uniqueMthlyCats, uniqueMthlyAmts = self.purchaseAnalysis(user_mthly_labels, user_mthly_amts, user_id, purchase_date="5/2022", purchase_id=1)
 
-            cat = categorization_funcs.categorization("../Dataset/categorias.csv")
+            cat = categorization_funcs.Categorization("../Dataset/categorias.csv")
             categories = cat.categorizeItems(user_mthly_labels, cutoff=0.4)    
             uniqueMthlyCats, uniqueMthlyAmts = cat.addCategoriesTotal(categories, user_mthly_amts)
 
@@ -278,7 +278,7 @@ class DBFunctions:
                     group_mthly_prods.extend(user_mthly_prods[0])
                     group_categories.extend(user_categories)
 
-        cat = categorization_funcs.categorization("../Dataset/categorias.csv")
+        cat = categorization_funcs.Categorization("../Dataset/categorias.csv")
         uniqueGroupMthlyCategories, uniqueGroupMthlyAmts = cat.addCategoriesTotal(group_mthly_labels, group_mthly_amts)
 
         titulo = 'Desglose mensual de grupo ' + str(group_id) + ' del mes ' + str(month) + '/' + str(year)
