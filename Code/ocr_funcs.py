@@ -63,6 +63,15 @@ class OCRFunctions:
             return False
 
     def insertProductDataToDb(self, text, tableName):    #No valido para TI o Macro
+        """NO USAR - FUNCION VIEJA
+
+        Args:
+            text (_type_): _description_
+            tableName (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """        
         tableDefinition = "ID SERIAL PRIMARY KEY, Description TEXT NOT NULL, Units REAL NOT NULL, Price REAL NOT NULL"
         self.dbhandler.createTable(tableName, tableDefinition)
         lines = text.readlines()
@@ -88,6 +97,16 @@ class OCRFunctions:
         return output
 
     def compareLine(self, line, expression, thresh=0.95):
+        """Intento previo de difflib.getCloseMatches. No utilizada
+
+        Args:
+            line (_type_): _description_
+            expression (_type_): _description_
+            thresh (float, optional): _description_. Defaults to 0.95.
+
+        Returns:
+            _type_: _description_
+        """        
         FirstWord = False
         indx = 0 
         words = line.split()
@@ -114,7 +133,7 @@ class OCRFunctions:
 
         return result
 
-    def findSubstring(self, line, expression):
+    def findSubstring(self, line: str, expression: str):
         result = line.find(expression)
         if result == -1:
             return False
@@ -123,6 +142,11 @@ class OCRFunctions:
             return True
 
     def parseTextFile(self, textFile):
+        """Lee archivo txt generado por OCR de factura buscando los limites de inicio y fin de zona de interes
+
+        Args:
+            textFile (str): Nombre del archivo .txt
+        """        
         with open('../Results/'+textFile+'.txt', 'r') as txtFile:
 
             startFound = False
@@ -164,7 +188,13 @@ class OCRFunctions:
     def priceTextConditioning(self, text):
         pass
 
-    def writeTextFile(self, text, filename):
+    def writeTextFile(self, text:str, filename:str):
+        """Escribe archivo de texto con OCR de foto
+
+        Args:
+            text (str): Texto a escribir
+            filename (str): Nombre de foto 
+        """        
         file = filename.replace(".jpg","")
         with open('../Results/'+file+'.txt', 'w') as txtFile:
             txtFile.write(text)
