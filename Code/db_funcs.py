@@ -94,7 +94,7 @@ class DBFunctions:
         self.cursor.execute(select_query)
         return self.cursor.fetchall()
 
-    def uniquePurchaseAnalysis(self, labels, amounts, user_id, purchase_date, purchase_id, plot=False):  
+    def uniquePurchaseAnalysis(self, labels, amounts, user_id:int, purchase_date:datetime.date, purchase_id:int, plot=False):  
         """Categorizacion de compra (unica) y pie chart opcional
 
         Args:
@@ -120,17 +120,18 @@ class DBFunctions:
         if self.cursor.rowcount == 0:
             current_pk_id = 0
         else:
-            current_pk_id = data[0,0] + 1
+            current_pk_id = data[0] + 1
 
-        select_query = "SELECT * FROM processed_purchases_table WHERE purchase_id = " + purchase_id
+        select_query = "SELECT * FROM processed_purchases_table WHERE purchase_id = " + str(purchase_id)
         self.cursor.execute(select_query)
         data = self.cursor.fetchall()
 
         if self.cursor.rowcount == 0:
-            for i in range (len(amounts)):
+            for i in range (len(uniqueAmts)):
                 current_pk_id = current_pk_id + i
-                insert_query = "INSERT INTO processed_purchases_table VALUES (" + str(current_pk_id) + "," + str(purchase_id) + "," + str(uniqueCats[i]) + "," + str(uniqueAmts[i]) + "," + str(user_id) + "," + str(purchase_date) + ")"
-                self.cursor.execute(insert_query)
+                insert_query = "INSERT INTO processed_purchases_table (id,purchase_id,category,amount,user_id,purchase_date) VALUES (%s,%s,%s,%s,%s,%s)"
+                data = (current_pk_id, purchase_id, uniqueCats[i], uniqueAmts[i], user_id, purchase_date)
+                self.cursor.execute(insert_query, data)
         
         self.commitChanges()
 
@@ -165,7 +166,7 @@ class DBFunctions:
             pid[i] = int(self.cursor.fetchone()[0])
         return pid
 
-    def getUsersInGroup(self, group_nr):
+    def getUsersInGroup(self, group_nr:int):
         """Devuelve los user_id pertenecientes al grupo
 
         Args:
@@ -179,7 +180,7 @@ class DBFunctions:
         group_users_id = np.array(self.cursor.fetchall())
         return group_users_id
 
-    def getUserMonthlyPurchases(self, user_id, month, year):
+    def getUserMonthlyPurchases(self, user_id:int, month:int, year:int):
         """Devuelve los detalles de las compras realizadas por un usuario en un mes y año dados
 
         Args:
@@ -213,9 +214,6 @@ class DBFunctions:
                 user_mthly_labels.append(purchase_detail[:,2])
                 user_mthly_prods.append(purchase_detail[:,2])
                 user_mthly_amts = np.append(user_mthly_amts, purchase_detail[:,5])
-    
-
-            uniqueMthlyCats, uniqueMthlyAmts = self.purchaseAnalysis(user_mthly_labels, user_mthly_amts, user_id, purchase_date="5/2022", purchase_id=1)
 
             cat = categorization_funcs.Categorization("../Dataset/categorias.csv")
             categories = cat.categorizeItems(user_mthly_labels, cutoff=0.4)    
@@ -241,7 +239,74 @@ class DBFunctions:
 
         return uniqueMthlyAmts, uniqueMthlyCats, user_mthly_prods, categories, RecordFound
 
-    def getGroupMonthlyPurchases(self, group_id, month, year, checkCategorization=False):
+    def analyseUserMonthlyPurchases(self, user_id:int, month:int, year:int, plot:bool=False):
+        """Analiza las compras realizadas por un usuario en un mes y año dados y guarda en db resultados
+
+        Args:
+            user_id (int): ID de usuario
+            month (int): Mes de compras
+            year (int): Año de compras
+            plot (bool, optional): Graficar compras. Defaults to False
+
+        Returns:
+            uniqueMthlyAmts (np.array[float]): Array con las cantidades para cada categoria unica
+            uniqueMthlyCats (list[string]): Lista con las categorias unicas para el mes
+            user_mthly_prods (list[string]): Lista con las descripciones de todos los productos del mes
+            categories (list[string]): Lista de categorias para cada producto del mes
+            RecordFound (bool): Indica si existen compras para ese user para el mes
+        """        
+        select_query = ("SELECT * FROM general_table WHERE user_id = " + str(user_id) + " AND (timestamp BETWEEN '" + str(year) + "-" + str(month) + "-1' AND '" + str(year) + "-" + str(month) + "-31')")
+        self.cursor.execute(select_query)
+        user_mthly_general = np.array(self.cursor.fetchall())
+
+        if self.cursor.rowcount != 0:
+            user_mthly_pids = user_mthly_general[:,0]
+            user_mthly_totals = user_mthly_general[:,3]
+
+            user_mthly_labels = []
+            user_mthly_prods = []
+            user_mthly_amts = np.zeros(1)
+
+            user_unique_labels = []
+            user_unique_amounts = np.zeros(1)
+
+            uniqueMthlyCats = []
+            uniqueMthlyAmts = np.zeros(1)
+
+            categories = []
+
+            for i in range(len(user_mthly_pids)):
+                select_query = ("SELECT * FROM details_table WHERE purchase_number = " + str(user_mthly_pids[i]))
+                self.cursor.execute(select_query)
+                purchase_detail = np.array(self.cursor.fetchall())
+
+                user_unique_labels, user_unique_amounts = self.uniquePurchaseAnalysis(labels=purchase_detail[:,2], amounts=purchase_detail[:,5], user_id=user_id, purchase_date=user_mthly_general[:,3][i], purchase_id=user_mthly_pids[i])
+
+                uniqueMthlyCats.append(user_unique_labels)
+                user_mthly_prods.append(purchase_detail[:,2])
+                uniqueMthlyAmts = np.append(uniqueMthlyAmts, user_unique_amounts)
+
+            if plot:
+                select_query = ("SELECT * FROM users_table WHERE user_id = " + str(user_id))
+                self.cursor.execute(select_query)
+                users_data = np.array(self.cursor.fetchall())
+
+                user_name = users_data[0,1]
+                titulo = 'Desglose mensual de ' + user_name + ' del mes ' + str(month) + '/' + str(year)
+                self.plotPieChart(uniqueMthlyAmts, uniqueMthlyCats, titulo)
+
+            RecordFound = True
+
+        else:
+            uniqueMthlyAmts = np.array([])
+            uniqueMthlyCats = []
+            user_mthly_prods = []
+            categories = []
+            RecordFound = False
+
+        return uniqueMthlyAmts, uniqueMthlyCats, user_mthly_prods, categories, RecordFound
+
+    def getGroupMonthlyPurchases(self, group_id:int, month:int, year:int, checkCategorization=False):
         """Obtiene las compras para un mes dado para un grupo de usuarios
 
         Args:
@@ -293,6 +358,58 @@ class DBFunctions:
 
         return uniqueGroupMthlyAmts, uniqueGroupMthlyCategories
 
+    def analyseGroupMonthlyPurchases(self, group_id:int, month:int, year:int, checkCategorization=False, plot=False):
+        """Analiza las compras para un mes dado para un grupo de usuarios y guarda en db resultados
+
+        Args:
+            group_id (int): ID del grupo
+            month (int): Mes de las compras
+            year (int): Año de las compras
+            checkCategorization (bool, optional): Generar csv con los productos y sus categorias para debug. Defaults to False.
+
+        Returns:
+            uniqueGroupMthlyAmts (np.array[float]): Array de totales para cada categoria unica del mes para grupo
+            uniqueGroupMthlyCategories (list[string]): Lista de categorias unicas del mes para grupo
+        """        
+        users_in_group = self.getUsersInGroup(group_id)
+
+        group_mthly_labels = []
+        user_mthly_labels = []
+        group_mthly_prods = []
+        user_mthly_prods = []
+        user_categories = []
+        group_categories = []
+        group_mthly_amts = np.empty(1, dtype=float)
+        user_mthly_amts = np.empty(1, dtype=float)
+
+        for user in users_in_group:
+            user_mthly_amts, user_mthly_labels, user_mthly_prods, user_categories, record_found = self.analyseUserMonthlyPurchases(user, month, year)
+            if record_found:
+                group_mthly_labels.extend(user_mthly_labels)
+                if user==users_in_group[0]:
+                    group_mthly_amts = user_mthly_amts
+                else:
+                    group_mthly_amts = np.append(group_mthly_amts, user_mthly_amts)
+                if checkCategorization:
+                    group_mthly_prods.extend(user_mthly_prods[0])
+                    group_categories.extend(user_categories)
+
+        cat = categorization_funcs.categorization("../Dataset/categorias.csv")
+        uniqueGroupMthlyCategories, uniqueGroupMthlyAmts = cat.addCategoriesTotal(group_mthly_labels, group_mthly_amts)
+
+        if plot:
+            titulo = 'Desglose mensual de grupo ' + str(group_id) + ' del mes ' + str(month) + '/' + str(year)
+            self.plotPieChart(uniqueGroupMthlyAmts, uniqueGroupMthlyCategories, titulo)
+
+        if checkCategorization:
+            
+            with open('categorization.csv', 'w', encoding='UTF8', newline='') as f:
+                writer = csv.writer(f)
+                for i in range(len(group_categories)):
+                    data = [group_categories[i], group_mthly_prods[i]]
+                    writer.writerow(data)
+
+        return uniqueGroupMthlyAmts, uniqueGroupMthlyCategories
 
     def plotPieChart(self, amounts, categories, plotTitle):
         """Grafica pie chart de categorias acorde a totales
@@ -318,4 +435,5 @@ class DBFunctions:
 
 if __name__ == '__main__':
     db = DBFunctions()
-    db.getGroupMonthlyPurchases(2, 5, 2021, True)
+    #db.getGroupMonthlyPurchases(2, 5, 2021, True)
+    db.analyseUserMonthlyPurchases(3, 6, 2021, False)
