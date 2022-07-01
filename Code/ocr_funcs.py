@@ -33,7 +33,8 @@ class OCRFunctions:
         boxRegion = cv.fillConvexPoly(blank, region, 255)
         boxRegionImage = cv.bitwise_and(image, boxRegion)
         #cv.imshow(boxRegionImage)
-        kernel = np.ones((3,3),np.uint8)
+        np.ones((3,3),np.uint8)
+        # kernel = np.ones((3,3),np.uint8)
         #boxRegionImage = cv.dilate(boxRegionImage, kernel, None, iterations=1)
         if not (filename == None):
             cv.imwrite('text' + filename + '.jpg', boxRegionImage)
@@ -66,7 +67,6 @@ class OCRFunctions:
         tableDefinition = "ID SERIAL PRIMARY KEY, Description TEXT NOT NULL, Units REAL NOT NULL, Price REAL NOT NULL"
         self.dbhandler.createTable(tableName, tableDefinition)
         lines = text.readlines()
-        prevLine = ""
         prevWords = []
         for line in lines:                  #Leo linea por linea
             if lines == "\n":

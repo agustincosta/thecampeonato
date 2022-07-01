@@ -59,7 +59,7 @@ def perspective_correction(image):
     pts1 = np.float32([[56,65],[368,52],[28,387],[389,390]])    #select by hand
     pts2 = np.float32([[0,0],[300,0],[0,300],[300,300]])
     M = cv2.getPerspectiveTransform(pts1,pts2)
-    dst = cv2.warpPerspective(image,M,(300,300))
+    cv2.warpPerspective(image,M,(300,300))
 
 if __name__ == "__main__":
     image = cv2.imread('boleta_frog2.jpg')

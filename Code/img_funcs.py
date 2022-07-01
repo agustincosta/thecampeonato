@@ -495,7 +495,7 @@ class imageFunctions:
             edged = cv.Canny(resized, 50, 200)
             result = cv.matchTemplate(edged, template, cv.TM_CCOEFF)
             (_, maxVal, _, maxLoc) = cv.minMaxLoc(result)
-            clone = np.dstack([edged, edged, edged])
+            np.dstack([edged, edged, edged])
             #cv.rectangle(clone, (maxLoc[0], maxLoc[1]),(maxLoc[0] + tW, maxLoc[1] + tH), (0, 0, 255), 2)
             #cv.namedWindow("Visualize", cv.WINDOW_NORMAL)
             #cv.imshow("Visualize", clone)
