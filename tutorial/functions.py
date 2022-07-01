@@ -130,9 +130,8 @@ class preprocessing:
             area = cv.contourArea(contours[i])
             if area > maxArea:
                 maxArea = area
-                prevContour = savedContour
                 savedContour = i
-        result = cv.drawContours(im3, contours, savedContour, (0,255,0), 8, cv.FILLED)
+        cv.drawContours(im3, contours, savedContour, (0,255,0), 8, cv.FILLED)
         cv.imshow('output', im3)
         key = cv.waitKey(0)
         if key == ord('q'):
@@ -156,7 +155,7 @@ class preprocessing:
             sys.exit()
         """
         contours_poly = cv.approxPolyDP(contours[savedContour], 150, True)
-        result = cv.drawContours(im3, contours_poly, -1, (0,0,255), 18, cv.FILLED)
+        cv.drawContours(im3, contours_poly, -1, (0,0,255), 18, cv.FILLED)
         cv.imshow('output', im3)
         key = cv.waitKey(0)
         if key == ord('q'):
@@ -352,7 +351,8 @@ class preprocessing:
             edged = cv.Canny(resized, 50, 200)
             result = cv.matchTemplate(edged, template, cv.TM_CCOEFF)
             (_, maxVal, _, maxLoc) = cv.minMaxLoc(result)
-            clone = np.dstack([edged, edged, edged])
+            np.dstack([edged, edged, edged])
+            # clone = np.dstack([edged, edged, edged])
             #cv.rectangle(clone, (maxLoc[0], maxLoc[1]),(maxLoc[0] + tW, maxLoc[1] + tH), (0, 0, 255), 2)
             #cv.namedWindow("Visualize", cv.WINDOW_NORMAL)
             #cv.imshow("Visualize", clone)
