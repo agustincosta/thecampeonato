@@ -65,8 +65,7 @@ class categorization:
         Returns:
             _ (string): Categoria principal
         """
-        try:
-            #return max(set(categories), key=categories.count)       
+        try:      
             if (categories[0] == categories[1]):
                 return categories[0]
             elif (categories[0] == categories[2]):
@@ -128,16 +127,3 @@ class categorization:
                 index = [1057]
             categorized.append(self.dataset[index,0][0][0])
         return categorized
-
-
-if __name__ == "__main__":
-    cat = categorization("../Dataset/categorias.csv") 
-    matches1, indexes1 = cat.getCloseMatches("AGUA", 3, 0.8) 
-    matches2, indexes2 = cat.getCloseMatches("JANE", 3, 0.8)
-    matches3, indexes3 = cat.getCloseMatches("LAVAR", 3, 0.8)
-    print(matches1)
-    print(indexes1) 
-    print(matches2)
-    print(indexes2)
-    print(matches3)
-    print(indexes3)

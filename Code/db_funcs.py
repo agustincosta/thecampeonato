@@ -1,9 +1,6 @@
-# from ast import If
 import numpy as np
 import psycopg2
-#import pandas
 import matplotlib.pyplot as plt
-#from sqlalchemy import create_engine
 import categorization_funcs
 # import datetime
 import csv
@@ -124,20 +121,20 @@ class DBFunctions:
             initial_pk_id = data[0] + 1
         current_pk_id = 0
 
-        select_query = "SELECT * FROM processed_purchases_table WHERE purchase_id = " + str(purchase_id)
+        select_query = f'SELECT * FROM processed_purchases_table WHERE purchase_id = {purchase_id}'
         self.cursor.execute(select_query)
         data = self.cursor.fetchall()
 
         if self.cursor.rowcount == 0:
-            for i in range (len(uniqueAmts)):
-                current_pk_id = initial_pk_id + i
-                insert_query = "INSERT INTO processed_purchases_table (id,purchase_id,category,amount,user_id,purchase_date) VALUES (%s,%s,%s,%s,%s,%s)"
-                data = (current_pk_id, purchase_id, uniqueCats[i], uniqueAmts[i], user_id, purchase_date)
-                self.cursor.execute(insert_query, data)
+            for listIdx in range (len(uniqueAmts)):
+                current_pk_id = initial_pk_id + listIdx
+                insert_query = f'INSERT INTO processed_purchases_table (id,purchase_id,category,amount,user_id,purchase_date) VALUES \
+                    ({current_pk_id},{purchase_id},{uniqueCats[listIdx]},{uniqueAmts[listIdx]},{user_id},{purchase_date})'
+                self.cursor.execute(insert_query)
         
         self.commitChanges()
 
-        select_query = ("SELECT * FROM users_table WHERE user_id = " + str(user_id))
+        select_query = f'SELECT * FROM users_table WHERE user_id = {user_id}'
         self.cursor.execute(select_query)
         users_data = np.array(self.cursor.fetchall())
 
@@ -280,21 +277,27 @@ class DBFunctions:
 
             categories = []
 
-            for i in range(len(user_mthly_pids)):
-                select_query = ("SELECT * FROM details_table WHERE purchase_number = " + str(user_mthly_pids[i]))
+            for pidIdx in range(len(user_mthly_pids)):
+                select_query = ("SELECT * FROM details_table WHERE purchase_number = " + str(user_mthly_pids[pidIdx]))
                 self.cursor.execute(select_query)
                 purchase_detail = np.array(self.cursor.fetchall())
 
-                user_unique_labels, user_unique_amounts = self.uniquePurchaseAnalysis(labels=purchase_detail[:,2], amounts=purchase_detail[:,5], user_id=user_id, purchase_date=user_mthly_general[:,3][i], purchase_id=user_mthly_pids[i])
+                user_unique_labels, user_unique_amounts = self.uniquePurchaseAnalysis(labels=purchase_detail[:,2], amounts=purchase_detail[:,5], user_id=user_id, purchase_date=user_mthly_general[:,3][pidIdx], purchase_id=user_mthly_pids[pidIdx])
 
-                uniqueMthlyCats.append(user_unique_labels)
-                user_mthly_prods.append(purchase_detail[:,2])
-                uniqueMthlyAmts = np.append(uniqueMthlyAmts, user_unique_amounts)
+                uniqueMthlyCats.extend(user_unique_labels)
+                user_mthly_prods.extend(purchase_detail[:,2])
+                if pidIdx == 0:
+                    uniqueMthlyAmts = user_unique_amounts
+                else:
+                    uniqueMthlyAmts = np.append(uniqueMthlyAmts, user_unique_amounts)
 
             if plot:
                 select_query = ("SELECT * FROM users_table WHERE user_id = " + str(user_id))
                 self.cursor.execute(select_query)
                 users_data = np.array(self.cursor.fetchall())
+                
+                cat = categorization_funcs.categorization("../Dataset/categorias.csv")
+                uniqueMthlyCats, uniqueMthlyAmts = cat.addCategoriesTotal(uniqueMthlyCats, uniqueMthlyAmts)
 
                 user_name = users_data[0,1]
                 titulo = 'Desglose mensual de ' + user_name + ' del mes ' + str(month) + '/' + str(year)

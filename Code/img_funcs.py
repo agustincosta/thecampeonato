@@ -516,39 +516,6 @@ class imageFunctions:
         #cv.waitKey(0)
         cv.imwrite('logo_found.jpg', img_color)
 
-    def imageConditioning(self, dir, filename):
-        """Funcion previa de preprocesamiento. No usada
-
-        Args:
-            dir (_type_): _description_
-            filename (_type_): _description_
-
-        Raises:
-            RuntimeError: _description_
-
-        Returns:
-            _type_: _description_
-        """        
-        #self.displayImage(self.img)
-        self.binaryThresh = self.normalThresholding(self.img)
-        #self.binaryThresh = self.adaptiveThresholding(self.img)
-        #self.displayImage(binaryThresh)
-        self.saveImage(self.binaryThresh, dir+"/binarized_"+filename)
-        self.binaryThresh = self.adaptiveThresholding(self.img)
-        self.saveImage(self.binaryThresh, dir+"/binarized_"+filename)
-        self.cleaned = self.cleanImage(self.binaryThresh)
-        #self.displayImage(self.cleaned)
-        self.calculateCFBoxDims()
-        self.CFBox, CFBoxFound = self.detectCFBox(self.cleaned)
-
-        if not CFBoxFound:
-            #print("-------------NO ENCONTRADO-------------")
-            #sys.exit()
-            self.stopProcess = True
-            raise RuntimeError("-------------NO ENCONTRADO-------------")
-
-        return CFBoxFound, self.cleaned
-
     def textRegions(self, image:cv.Mat):
         """Obtiene regiones para OCR
 
