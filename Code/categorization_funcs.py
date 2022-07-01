@@ -65,8 +65,7 @@ class Categorization:
         Returns:
             _ (string): Categoria principal
         """
-        try:
-            #return max(set(categories), key=categories.count)       
+        try:      
             if (categories[0] == categories[1]):
                 return categories[0]
             elif (categories[0] == categories[2]):
