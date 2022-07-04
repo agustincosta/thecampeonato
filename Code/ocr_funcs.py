@@ -120,7 +120,7 @@ class OCRFunctions:
             filename (str): Nombre de foto 
         """        
         file = filename.replace(".jpg","")
-        with open('../Results/'+file+'.txt', 'w') as txtFile:
+        with open(file+'.txt', 'w') as txtFile:
             txtFile.write(text)
         txtFile.close()
 

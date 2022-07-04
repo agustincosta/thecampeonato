@@ -2,7 +2,7 @@ import numpy as np
 import psycopg2
 import matplotlib.pyplot as plt
 import categorization_funcs
-# import datetime
+import datetime
 import csv
 import calendar
 
