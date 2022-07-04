@@ -1,4 +1,3 @@
-from unittest import result
 import img_funcs
 import ocr_funcs
 import sys

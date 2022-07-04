@@ -1,7 +1,5 @@
 import difflib
-# from enum import unique
 import numpy as np
-from pip import main
 
 class Categorization:
 
