@@ -262,11 +262,8 @@ class DBFunctions:
 
         if self.cursor.rowcount != 0:
             user_mthly_pids = user_mthly_general[:,0]
-            user_mthly_totals = user_mthly_general[:,3]
 
-            user_mthly_labels = []
             user_mthly_prods = []
-            user_mthly_amts = np.zeros(1)
 
             user_unique_labels = []
             user_unique_amounts = np.zeros(1)
