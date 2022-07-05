@@ -1,12 +1,7 @@
 import cv2 as cv
 import numpy as np
-# import sys
-# from PIL import Image
-# from enum import Enum
 import pytesseract
 from difflib import SequenceMatcher
-# import imutils
-import db_funcs
 
 class OCRFunctions:
 
@@ -15,7 +10,7 @@ class OCRFunctions:
     def __init__(self):
         """Inicializacion de clase
         """        
-        self.dbhandler = db_funcs.DBFunctions()
+        pass
 
     def readRegionText(self, region, image, filename, includeLetters):
         """Hace OCR de una region de una imagen a partir de sus 4 esquinas
@@ -36,8 +31,8 @@ class OCRFunctions:
         np.ones((3,3),np.uint8)
         # kernel = np.ones((3,3),np.uint8)
         #boxRegionImage = cv.dilate(boxRegionImage, kernel, None, iterations=1)
-        if not (filename == None):
-            cv.imwrite('text' + filename + '.jpg', boxRegionImage)
+        # if not (filename == None):
+        #     cv.imwrite('text' + filename + '.jpg', boxRegionImage)
         ocr_options_text = '--psm 3 -c preserve_interword_spaces=1 -c tessedit_char_whitelist="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz$-+:.,!/()*[] " load_system_dawg=false load_freq_dawg=false'
         ocr_options_nums = '--psm 3 -c preserve_interword_spaces=1 -c tessedit_char_whitelist="0123456789$-+:., " load_system_dawg=false load_freq_dawg=false'
         if includeLetters:
@@ -87,7 +82,7 @@ class OCRFunctions:
         self.dbhandler.closeConnection()
         return output
 
-    def compareLine(self, line, expression, thresh=0.95):
+    def compareLine(self, line:str, expression:str, thresh=0.95):
         FirstWord = False
         indx = 0 
         words = line.split()
@@ -169,11 +164,3 @@ class OCRFunctions:
         with open('../Results/'+file+'.txt', 'w') as txtFile:
             txtFile.write(text)
         txtFile.close()
-
-if __name__ == "__main__":
-    ocr = OCRFunctions()
-    txtFile = 'DEVOTO/OCR_20'
-    ocr.parseTextFile(txtFile)
-    #with open('../Results/DEVOTO/OCR_18.txt', 'r') as txtFile:
-        
-        #print(ocr.insertProductDataToDb(txtFile, "test"))

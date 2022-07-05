@@ -1,14 +1,11 @@
 import cv2 as cv
 import numpy as np
 import sys
-# from PIL import Image
-# from enum import Enum
+from enum import Enum
 from difflib import SequenceMatcher
 import imutils
 from ocr_funcs import OCRFunctions
 import matplotlib.pyplot as plt
-# import pytesseract
-# from pytesseract import Output
 
 class locales(Enum):
     TiendaInglesa = 1
@@ -53,7 +50,7 @@ class imageFunctions:
     consumoFinalDevLBoxHeightmm = 15
     consumoFinalMacroBoxHeightmm = 11
     consumoFinalMacroBoxWidthmm = 31.5
-    local = 0
+    local = locales.Devoto
     consumoFinalBoxWidthPx = 0
     consumoFinalBoxHeightPx = 0
     croppedImgWidthPx = 0
@@ -70,15 +67,13 @@ class imageFunctions:
     CFBox = 0
     stopProcess = False
 
-    def __init__(self, imgPath:str, supermarket:locales):
+    def __init__(self, imgPath:str):
         """Inicializacion de clase. Lee imagen y obtiene parametros basicos
 
         Args:
             imgPath (str): Ruta de imagen a leer de archivo
-            supermarket (locales): Enum de local al que pertenece la factura
         """        
         self.getImage(imgPath)
-        self.local = supermarket
         self.height, self.width = self.img.shape[:2]
         self.croppedImgHeightPx = self.height
         self.croppedImgWidthPx = self.width
@@ -94,7 +89,7 @@ class imageFunctions:
         if self.img is None:
             sys.exit("Could not open the image")
 
-    def scaling(self, image:cv.Mat, scale=2) -> cv.Mat:
+    def scaling(self, image, scale=2):
         """Escala imagen por el factor dado
 
         Args:
@@ -108,7 +103,7 @@ class imageFunctions:
         self.width = self.width*scale
         return cv.resize(image, None, fx=scale, fy=scale, interpolation=cv.INTER_CUBIC)
 
-    def grayscaling(self, image:cv.Mat) -> cv.Mat:
+    def grayscaling(self, image):
         """Convierte imagen a escala de grises
 
         Args:
@@ -120,7 +115,7 @@ class imageFunctions:
         gray_img = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
         return gray_img
 
-    def gaussianBlur(self, image:cv.Mat) -> cv.Mat:
+    def gaussianBlur(self, image):
         """Aplica filtro gaussiano para suavizar pixeles con kernel predefinido de 7x7
 
         Args:
@@ -131,7 +126,7 @@ class imageFunctions:
         """        
         return cv.GaussianBlur(image, (7, 7), 0)
 
-    def filtering(self, image:cv.Mat) -> cv.Mat:
+    def filtering(self, image):
         """Aplica filtro bilateral a imagen para suavizar con diametro 19
 
         Args:
@@ -143,7 +138,7 @@ class imageFunctions:
         bilateral = cv.bilateralFilter(image, 19, 100, 100)
         return bilateral
 
-    def adaptiveThresholding(self, image:cv.Mat) -> cv.Mat:
+    def adaptiveThresholding(self, image):
         """Binarizado de imagen con umbral adaptivo. Tamaño de area de umbral dado por variables globales de clase
 
         Args:
@@ -155,7 +150,7 @@ class imageFunctions:
         adaptThresh = cv.adaptiveThreshold(image, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, self.thresholdingBlockSize, self.thresholdingConstant)
         return adaptThresh
 
-    def normalThresholding(self, image:cv.Mat) -> cv.Mat:
+    def normalThresholding(self, image):
         """Binarizado con umbral fijo
 
         Args:
@@ -168,7 +163,7 @@ class imageFunctions:
         _, binaryThresh = cv.threshold(grayscale, self.binaryLimit, 255, cv.THRESH_BINARY)
         return binaryThresh
 
-    def OtsuThresholding(self, image:cv.Mat) -> cv.Mat:
+    def OtsuThresholding(self, image):
         """Binarizado con metodo Otsu. Mejor que umbral fijo y mas rapido que adaptivo
 
         Args:
@@ -180,7 +175,7 @@ class imageFunctions:
         T, binaryThresh = cv.threshold(image, self.binaryLimit, 255, cv.THRESH_BINARY+cv.THRESH_OTSU)
         return binaryThresh
 
-    def cleanImage(self, image:cv.Mat) -> cv.Mat:
+    def cleanImage(self, image):
         """Erode y dilate para eliminar puntos sueltos y unir lineas cortadas
 
         Args:
@@ -197,7 +192,7 @@ class imageFunctions:
         dilatedImage = cv.dilate(eroded, kernel, None, iterations=1)   
         return dilatedImage
 
-    def getSkewAngle(self, image:cv.Mat) -> float:
+    def getSkewAngle(self, image) -> float:
         """Obtiene angulo de orientacion de imagen a partir de parrafos y otros bloques
 
         Args:
@@ -224,7 +219,7 @@ class imageFunctions:
         
         return -1.0 * angle
         
-    def rotateImage(self, image:cv.Mat, angle: float) -> cv.Mat: 
+    def rotateImage(self, image, angle: float): 
         """Rotacion de imagen por angulo dado
 
         Args:
@@ -241,7 +236,7 @@ class imageFunctions:
         newImage = cv.warpAffine(newImage, M, (w, h), flags=cv.INTER_CUBIC, borderMode=cv.BORDER_REPLICATE)
         return newImage
 
-    def skewCorrection(self, image:cv.Mat) -> cv.Mat:
+    def skewCorrection(self, image):
         """Corrige la rotacion de la imagen para que este derecha
 
         Args:
@@ -291,7 +286,7 @@ class imageFunctions:
         self.consumoFinalBoxWidthPx = self.width*anchoBoxmm/self.ticketWidthmm
         self.consumoFinalBoxHeightPx = altoBoxmm*self.consumoFinalBoxWidthPx/anchoBoxmm 
 
-    def detectCFBox(self, image:cv.Mat):
+    def detectCFBox(self, image):
         """Detecta caja de "CONSUMO FINAL" en ticket y obtiene su bounding box
 
         Args:
@@ -304,7 +299,7 @@ class imageFunctions:
         boxFound = False
         kernel = np.ones((15,30),np.uint8)
         contourImg = cv.erode(image, kernel, None, iterations=1)
-        #self.displayImage(contourImg)
+
         contours, hierarchy = cv.findContours(contourImg, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         recCenter = 0
         recWidth = 0
@@ -319,7 +314,6 @@ class imageFunctions:
         if key == ord('q'):
             sys.exit()
 
-        #self.displayImageContours(contourImg, contours, -1)
         i = 0
 
         for c in contours:
@@ -334,15 +328,10 @@ class imageFunctions:
             widthOK2 = (recWidth < heightHighLimit) and (recWidth > heightLowLimit)
             heightOK2 = (recHeight < widthHighLimit) and (recHeight > widthLowLimit)
 
-            #print("W="+str(recWidth)+" H="+str(recHeight))
-            #self.displayImageContours(contourImg, contours, i)
-
             if ((heightOK1 and widthOK1) or (heightOK2 and widthOK2)) and (recCenter[1] < self.height/2):
                 text = OCRFunctions.readRegionText(OCRFunctions, np.int0(cv.boxPoints(CFBox)), image, "cfBox", True)
-                #print(text)
                 similarity  = SequenceMatcher(None, text, self.CFText).ratio()
-                #print(similarity)
-                #cv.waitKey(0)
+
                 if similarity >= 0.7:
                     print("Box found!")
                     boxFound = True
@@ -471,9 +460,11 @@ class imageFunctions:
             img (cv.Mat): Imagen
             filename (str): Nombre y ruta de archivo
         """        
+        if (filename.find('.jpg') == -1): 
+            filename = filename + '.jpg' 
         cv.imwrite(filename, img)
 
-    def matchTemplate(self, temp:cv.Mat, img:cv.Mat):
+    def matchTemplate(self, temp, img):
         """Matchea template dentro de una imagen. Se usa para buscar logo de super en ticket
 
         Args:
@@ -516,40 +507,7 @@ class imageFunctions:
         #cv.waitKey(0)
         cv.imwrite('logo_found.jpg', img_color)
 
-    def imageConditioning(self, dir, filename):
-        """Funcion previa de preprocesamiento. No usada
-
-        Args:
-            dir (_type_): _description_
-            filename (_type_): _description_
-
-        Raises:
-            RuntimeError: _description_
-
-        Returns:
-            _type_: _description_
-        """        
-        #self.displayImage(self.img)
-        self.binaryThresh = self.normalThresholding(self.img)
-        #self.binaryThresh = self.adaptiveThresholding(self.img)
-        #self.displayImage(binaryThresh)
-        self.saveImage(self.binaryThresh, dir+"/binarized_"+filename)
-        self.binaryThresh = self.adaptiveThresholding(self.img)
-        self.saveImage(self.binaryThresh, dir+"/binarized_"+filename)
-        self.cleaned = self.cleanImage(self.binaryThresh)
-        #self.displayImage(self.cleaned)
-        self.calculateCFBoxDims()
-        self.CFBox, CFBoxFound = self.detectCFBox(self.cleaned)
-
-        if not CFBoxFound:
-            #print("-------------NO ENCONTRADO-------------")
-            #sys.exit()
-            self.stopProcess = True
-            raise RuntimeError("-------------NO ENCONTRADO-------------")
-
-        return CFBoxFound, self.cleaned
-
-    def textRegions(self, image:cv.Mat):
+    def textRegions(self, image):
         """Obtiene regiones para OCR
 
         Args:
@@ -559,7 +517,7 @@ class imageFunctions:
             self.productRegion, self.priceRegion, self.region (np.array): Regiones de producto, precio y ticket completo
         """        
         self.region =np.array([[0, self.height], [0, 0], [self.width, 0], [self.width, self.height]])
-        self.productRegion, self.priceRegion = self.extractReadingAreas(image, self.region)
+        self.productRegion, self.priceRegion = self.extractReadingAreas(self.region)
         return self.productRegion, self.priceRegion, self.region
 
     def dprint(self, text, cond:bool):
@@ -574,7 +532,7 @@ class imageFunctions:
         else:
             pass
 
-    def dsaveImage(self, img:cv.Mat, filename:str, cond:bool):
+    def dsaveImage(self, img, filename:str, cond:bool):
         """Debug save image condicional
 
         Args:
@@ -591,7 +549,7 @@ class imageFunctions:
         plt.figure(figsize=(16,10))
         return plt.imshow(cv.cvtColor(image, cv.COLOR_BGR2RGB))
 
-    def imagePreprocessing(self, image:cv.Mat, showResults:bool, dir:str, filename:str) -> cv.Mat:
+    def imagePreprocessing(self, image, showResults:bool, dir:str, filename:str):
         """Funcion de preprocesamiento de imagen para OCR. Encadena varias funciones anteriores para lograr una imagen legible
 
         Args:
@@ -605,45 +563,14 @@ class imageFunctions:
         """        
         resized = self.scaling(image)
         self.dprint("Resized", showResults)
-        #self.dsaveImage(resized, "Resized.jpg", showResults)
         grayscale = self.grayscaling(resized)
         self.dprint("Grayscale", showResults)
-        #self.dsaveImage(grayscale, "Grayscale.jpg", showResults)
         filtered = self.filtering(grayscale)
         self.dprint("Bilateral filter", showResults)
         binarized = self.OtsuThresholding(filtered)
-        #binarized = self.adaptiveThresholding(filtered)
         self.dprint("Otsu binarization", showResults)
         cleaned = self.cleanImage(binarized)
         self.dprint("Dilate-Erode", showResults)
-        #rotated = self.skewCorrection(cleaned)
         self.saveImage(cleaned, dir+"/binarized_"+filename)
-        #Template matching funcionando pero no integrado 
-        #self.matchTemplate("../Images/Templates/DEVOTO_FM.jpg", cleaned)
 
-        #self.dprint("Deskewed", showResults)
-        #self.dsaveImage(rotated, "Deskewed.jpg", showResults)
-        #corrected = self.perspectiveCorrection(rotated)
-        #self.dprint("Dewarped", showResults)
-        #self.dsaveImage(corrected, "Dewarped.jpg", showResults)
-        # region = np.array([[0, self.height], [0, 0], [self.width, 0], [self.width, self.height]])
-        # blank = np.zeros_like(cleaned)
-        # boxRegion = cv.fillConvexPoly(blank, region, 255)
-        # boxRegionImage = cv.bitwise_and(cleaned, boxRegion)
-        # self.displayImage(boxRegionImage)
-        # text = OCRFunctions.readRegionText(OCRFunctions, region, cleaned, "aa", True)
-        # OCRFunctions.writeTextFile(OCRFunctions, text, "../Pruebas/wakawaka")
-        # d = pytesseract.image_to_data(cleaned, output_type=Output.DICT)
-        # n_boxes = len(d['level'])
-        # boxes = cv.cvtColor(cleaned.copy(), cv.COLOR_BGR2RGB)
-        # for i in range(n_boxes):
-        #     (x, y, w, h) = (d['left'][i], d['top'][i], d['width'][i], d['height'][i])    
-        #     boxes = cv.rectangle(boxes, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            
-        # self.plot_rgb(boxes)
-        # plt.show()
         return cleaned
-
-if __name__ == "__main__":
-    preprocessing = imageFunctions("../Images/DEVOTO_FM/11.jpg", "DEVOTO_FM")
-    resultImg = preprocessing.imagePreprocessing(preprocessing.img, True)
