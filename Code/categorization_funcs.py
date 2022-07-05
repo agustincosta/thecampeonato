@@ -1,5 +1,4 @@
 import difflib
-# from enum import unique
 import numpy as np
 
 class Categorization:
@@ -64,16 +63,15 @@ class Categorization:
         Returns:
             _ (string): Categoria principal
         """        
-        try:
-            return max(set(categories), key=categories.count)       
-            # if (categories[0] == categories[1]):
-            #     return categories[0]
-            # elif (categories[0] == categories[2]):
-            #     return categories[0]
-            # elif (categories[1] == categories[2]):
-            #     return categories[1]
-            # else:
-            #     return categories[0]
+        try:      
+            if (categories[0] == categories[1]):
+                return categories[0]
+            elif (categories[0] == categories[2]):
+                return categories[0]
+            elif (categories[1] == categories[2]):
+                return categories[1]
+            else:
+                return categories[0]
         except:
             if len(categories) == 0:
                 return "OTROS"
@@ -123,7 +121,6 @@ class Categorization:
             matches = difflib.get_close_matches(item, productsList, n=3, cutoff=cutoff)
             mainCategory = self.selectMainCategory(matches)
             index = np.where(productsList==mainCategory)
-
             if index == []:
                 index = [1057]
             categorized.append(self.dataset[index,0][0][0])
