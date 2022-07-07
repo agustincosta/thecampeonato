@@ -137,5 +137,5 @@ dmypy.json
 *.jpg
 *.png
 *.pdf
-
+!/Images/Tests/Screenshot.jpg
 !diagrama_funcional.png
