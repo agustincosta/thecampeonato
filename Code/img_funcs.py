@@ -4,7 +4,7 @@ import sys
 from enum import Enum
 from difflib import SequenceMatcher
 import imutils
-from .ocr_funcs import OCRFunctions
+from ocr_funcs import OCRFunctions
 import matplotlib.pyplot as plt
 
 class locales(Enum):

@@ -1,5 +1,4 @@
 import img_funcs
-import ocr_funcs
 import sys
 
 localesDictionary = {"DEVOTO" : img_funcs.locales.Devoto,
