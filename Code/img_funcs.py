@@ -17,7 +17,7 @@ class locales(Enum):
     Macro = 7
     Tata = 8
 
-class imageFunctions:
+class ImageFunctions:
 
     img = 0
     adaptThresh = 0
@@ -329,7 +329,7 @@ class imageFunctions:
             heightOK2 = (recHeight < widthHighLimit) and (recHeight > widthLowLimit)
 
             if ((heightOK1 and widthOK1) or (heightOK2 and widthOK2)) and (recCenter[1] < self.height/2):
-                text = OCRFunctions.readRegionText(OCRFunctions, np.int0(cv.boxPoints(CFBox)), image, "cfBox", True)
+                text = OCRFunctions.readRegionText(OCRFunctions, np.int0(cv.boxPoints(CFBox)), image, True)
                 similarity  = SequenceMatcher(None, text, self.CFText).ratio()
 
                 if similarity >= 0.7:
@@ -549,17 +549,18 @@ class imageFunctions:
         plt.figure(figsize=(16,10))
         return plt.imshow(cv.cvtColor(image, cv.COLOR_BGR2RGB))
 
-    def imagePreprocessing(self, image, showResults:bool, dir:str, filename:str):
-        """Funcion de preprocesamiento de imagen para OCR. Encadena varias funciones anteriores para lograr una imagen legible
+    def imagePreprocessing(self, image, showResults:bool=False, saveImage:bool=False, dir:str='', filename:str=''):
+        """Preprocessing function for images before OCR. Applies several filters to obtain legible text
 
         Args:
-            image (cv.Mat): Imagen de entrada
-            showResults (bool): Mostrar resultados intermedios
-            dir (str): Directorio de imagen (solo directorio, no nombre)
-            filename (str): Nombre de archivo (con extension) para guardar resultado
+            image (cv.Mat): Input image
+            showResults (bool, optional): Show intermediate image results
+            saveImage (bool, optional): Save final processed image
+            dir (str, optional): Result image directory (just directory path)
+            filename (str, optional): Result image filename (with extension) to save results
 
         Returns:
-            cv.Mat: Imagen preprocesada
+            cv.Mat: Processed image
         """        
         resized = self.scaling(image)
         self.dprint("Resized", showResults)
@@ -571,6 +572,18 @@ class imageFunctions:
         self.dprint("Otsu binarization", showResults)
         cleaned = self.cleanImage(binarized)
         self.dprint("Dilate-Erode", showResults)
-        self.saveImage(cleaned, dir+"/binarized_"+filename)
+        self.dsaveImage(cleaned, dir+"/binarized_"+filename, saveImage)
 
         return cleaned
+
+    def readImageText(self) -> str:
+        """Applies preprocessing and reads image contents with OCR
+
+        Returns:
+            str: Text read from image
+        """    
+        resultImg = self.imagePreprocessing(self.img,saveImage=True,dir="Results/",filename="temp")
+        _, _, completeImgRegion = self.textRegions(resultImg)
+        ocr = OCRFunctions
+        result_text = ocr.readRegionText(ocr, completeImgRegion, resultImg, True)
+        return result_text

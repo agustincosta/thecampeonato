@@ -1,0 +1,26 @@
+{% load static %}
+<html>
+    <head>
+    </head>
+    <body>
+        <link rel="stylesheet" href="{% static 'expense_tracking/style.css' %}">
+        <h1>{{title}}</h1>
+        <div class="transaction-boxes">
+            <div class="table-box">
+                <table border = "1" cellpadding = "10" cellspacing = "1">
+                    <tr>
+                        <th>Group ID</th>
+                        <th>Name</th>
+                    </tr>
+                    {% for item in table %}
+                    <tr>
+                        <td> {{item.group}} </td>
+                        <td> {{item.group_name}} </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

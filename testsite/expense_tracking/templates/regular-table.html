@@ -1,0 +1,26 @@
+{% load static %}
+<html>
+    <head>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.3/css/bootstrap.min.css">
+        <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.3/css/bootstrap.min.css'>
+        <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/ionicons/2.0.1/css/ionicons.min.css'>
+    </head>
+    <body>
+        <link rel="stylesheet" href="{% static 'expense_tracking/style.css' %}">
+        <h1>Form:</h1>
+        <div class="transaction-boxes">
+            <div class="table-box">
+                <div class="title">{{title}}</div>
+                    {% for row in table %}
+                    <div class="row">
+                        {% for item in row %}
+                            <div class="col-4"> {{item}} </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
