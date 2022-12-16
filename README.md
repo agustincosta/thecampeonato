@@ -5,11 +5,10 @@ OCR de facturas y análisis de datos
 # Run commands and outputs for modules
 1. Image preprocessing and OCR
 ```sh
-  python App.py $(imagePath) $(resultDirPath) $(resultFilename)
+  python Code/App.py $(imagePath)
 ```
 - imagePath includes the whole directory route, filename and extension
-- resultDirPath must be just the directory path to which the resulting image and text file are written
-- resultFilename must be an identifying filename for the result files, without directory path or extension. In both cases the final filenames will include the 'binarized' and 'OCR' prefixes as well as the extensions '.jpg' and '.txt'
+
 
 # Local development with docker
 

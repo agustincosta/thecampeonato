@@ -1,0 +1,41 @@
+{% load static %}
+
+<html> 
+    <body>
+        <link rel="stylesheet" href="{% static 'expense_tracking/background.css' %}">
+        <h1 style="color:rgb(255, 255, 255);">Create entries:</h1>
+        <button type="submit"><a href="/userform">Users</a></button>
+        <button type="submit"><a href="/groupform">Groups</a></button>
+        <button type="submit"><a href="/purchaseform">Purchases</a></button>
+        <button type="submit"><a href="/productform">Products</a></button>
+        <button type="submit"><a href="/categoriesform">Categories</a></button>
+
+        <h1 style="color:rgb(255, 255, 255);">View all entries:</h1>
+        <button type="submit"><a href="/userview">Users</a></button>
+        <button type="submit"><a href="/groupview">Groups</a></button>
+        <button type="submit"><a href="/purchaseview">Purchases</a></button>
+        <button type="submit"><a href="/productview">Products</a></button>
+        <button type="submit"><a href="/categoriesview">Categories</a></button>
+
+        <h1 style="color:rgb(255, 255, 255);">Edit entry:</h1>
+        <button type="submit"><a href="/useredit">Users</a></button>
+        <button type="submit"><a href="/groupedit">Groups</a></button>
+        <button type="submit"><a href="/purchaseedit">Purchases</a></button>
+        <button type="submit"><a href="/productedit">Products</a></button>
+        <button type="submit"><a href="/categoriesedit">Categories</a></button>
+
+        <h1 style="color:rgb(255, 255, 255);">Data tables:</h1>
+        <button type="submit"><a href="/datatable/singlepurchase/">Single purchase info</a></button>
+        <button type="submit"><a href="/datatable/userpurchases/">User purchases info</a></button>
+        <button type="submit"><a href="/datatable/lastpurchases/">Last purchases info</a></button>
+        <button type="submit"><a href="/datatable/usermonthlypurchases/">User monthly purchases info</a></button>
+        <button type="submit"><a href="/datatable/groupmonthlypurchases/">Group monthly purchases info</a></button>
+        <button type="submit"><a href="/datatable/usersingroup/">Group info</a></button>
+
+        <h1 style="color:rgb(255, 255, 255);">Analytics:</h1>
+        <button type="submit"><a href="/analytics/singlepurchase/">Single purchase analysis</a></button>
+        <button type="submit"><a href="/analytics/monthlypurchases/">User monthly purchases analysis</a></button>
+        <button type="submit"><a href="/analytics/groupmonthlypurchases/">Group monthly purchases analysis</a></button>
+        
+    </body>
+</html>

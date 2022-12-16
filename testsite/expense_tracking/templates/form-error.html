@@ -1,0 +1,12 @@
+{% load static %}
+
+<html>
+    <body>
+        <link rel="stylesheet" href="{% static 'expense_tracking/style.css' %}">
+        <h1>Form error</h1>
+        <p>{{explanation}}</p>
+        <form>
+            <input type="button" value="Retornar" onclick="history.back()">
+        </form>
+    </body>
+</html>

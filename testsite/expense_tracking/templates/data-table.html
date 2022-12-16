@@ -1,0 +1,41 @@
+{% load static %}
+
+<html>
+    <body>
+        <link rel="stylesheet" href="{% static 'expense_tracking/stylez.css' %}">
+        <h1>{{table_title}}{{subject}}</h1>
+        <table>
+            <tr>
+                {% for title in header %}
+                    <th>
+                        {{title}}
+                    </th>
+                {% endfor %}
+            </tr>
+
+            {% if data.object_list.count == header|length %}
+                <tr>
+                    {% for row in data %}
+                        <td>
+                            {{row}}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% else %}
+                {% for row in data %}
+                    <tr>
+                        {% for element in row %}
+                            <td>
+                                {{element}}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            {% endif %}
+
+        </table>
+
+        <p></p>
+        <button type="submit"><a href="/home">Return</a></button>
+    </body>
+</html>
