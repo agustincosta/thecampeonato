@@ -1,0 +1,14 @@
+{% load static %}
+
+<html>
+    <body>
+        <link rel="stylesheet" href="{% static 'expense_tracking/style.css' %}">
+        <h1>Form:</h1>
+        <form action="" method="POST">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <input type = "submit" value = "Submit">
+            <button type="submit"><a href="/home">Return</a></button>
+        </form>
+    </body>
+</html>

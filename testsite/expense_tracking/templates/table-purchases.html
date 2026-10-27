@@ -1,0 +1,32 @@
+{% load static %}
+<html>
+    <head>
+    </head>
+    <body>
+        <link rel="stylesheet" href="{% static 'expense_tracking/style.css' %}">
+        <h1>{{title}}</h1>
+        <div class="transaction-boxes">
+            <div class="table-box">
+                <table border = "1" cellpadding = "10" cellspacing = "1">
+                    <tr>
+                        <th>User ID</th>
+                        <th>Store ID</th>
+                        <th>Purchase date</th>
+                        <th>Purchase total</th>
+                        <th>Purchase ID</th>
+                    </tr>
+                    {% for item in table %}
+                    <tr>
+                        <td> {{item.user_id}} </td>
+                        <td> {{item.store_id}} </td>
+                        <td> {{item.purchase_date}} </td>
+                        <td> {{item.purchase_total}} </td>
+                        <td> {{item.purchase}} </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

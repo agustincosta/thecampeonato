@@ -1,5 +1,4 @@
 import img_funcs
-import ocr_funcs
 import sys
 
 localesDictionary = {"DEVOTO" : img_funcs.locales.Devoto,
@@ -13,21 +12,15 @@ localesDictionary = {"DEVOTO" : img_funcs.locales.Devoto,
                      "TI" : img_funcs.locales.TiendaInglesa
 }
 
-if len(sys.argv) < 4:
-    raise Exception("Unsufficient parameters")
+if len(sys.argv) < 2:
+    raise Exception("Insufficient parameters")
 
 try:
     imagePath = sys.argv[1]         #with filename and extension
-    resultPath = sys.argv[2]        #just result directory path
-    resultFilename = sys.argv[3]    #filename without extension
 
-    preprocessing = img_funcs.imageFunctions(imagePath)
-    resultImg = preprocessing.imagePreprocessing(preprocessing.img, False, resultPath, resultFilename)
-    productRegion, priceRegion, completeImgRegion = preprocessing.textRegions(resultImg)
-
-    ocr = ocr_funcs.OCRFunctions
-    result_text = ocr.readRegionText(ocr, completeImgRegion, resultImg, None, True)
-    ocr.writeTextFile(ocr, result_text, resultPath + 'OCR_'+resultFilename)
+    preprocessing = img_funcs.ImageFunctions(imagePath)
+    result_text = preprocessing.readImageText()
+    print(result_text)
 except Exception as e:
     print(e)
 

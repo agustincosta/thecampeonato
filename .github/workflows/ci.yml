@@ -14,6 +14,9 @@ jobs:
       with:
         python-version: 3.8
 
+    - name: Install opencv
+      run: sudo apt-get install python3-opencv tesseract-ocr tesseract-ocr-spa
+
     - name: Installing resoruces
       run: |
         pip install -r Code/requirements.txt

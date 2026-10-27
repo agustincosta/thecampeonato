@@ -12,13 +12,12 @@ class OCRFunctions:
         """        
         pass
 
-    def readRegionText(self, region, image, filename, includeLetters):
+    def readRegionText(self, region, image, includeLetters):
         """Hace OCR de una region de una imagen a partir de sus 4 esquinas
 
         Args:
             region (list): Esquinas del poligono
             image (image): Imagen objetivo
-            filename (string): Nombre de archivo txt a escribir
             includeLetters (bool): Incluir o excluir letras de los posibles caracteres a leer
 
         Returns:
@@ -27,12 +26,6 @@ class OCRFunctions:
         blank = np.zeros_like(image)
         boxRegion = cv.fillConvexPoly(blank, region, 255)
         boxRegionImage = cv.bitwise_and(image, boxRegion)
-        #cv.imshow(boxRegionImage)
-        np.ones((3,3),np.uint8)
-        # kernel = np.ones((3,3),np.uint8)
-        #boxRegionImage = cv.dilate(boxRegionImage, kernel, None, iterations=1)
-        # if not (filename == None):
-        #     cv.imwrite('text' + filename + '.jpg', boxRegionImage)
         ocr_options_text = '--psm 3 -c preserve_interword_spaces=1 -c tessedit_char_whitelist="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz$-+:.,!/()*[] " load_system_dawg=false load_freq_dawg=false'
         ocr_options_nums = '--psm 3 -c preserve_interword_spaces=1 -c tessedit_char_whitelist="0123456789$-+:., " load_system_dawg=false load_freq_dawg=false'
         if includeLetters:
@@ -40,7 +33,6 @@ class OCRFunctions:
         else:
             ocr_options = ocr_options_nums
         text = pytesseract.image_to_string(boxRegionImage, lang="spa", config=ocr_options)
-        #text = pytesseract.image_to_data(boxRegionImage, lang="spa", config=ocr_options)
         return text
     
     def isfloat(self, value):
